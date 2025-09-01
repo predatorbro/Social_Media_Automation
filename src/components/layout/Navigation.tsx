@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroButton } from "@/components/ui/hero-button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -59,13 +60,17 @@ const Navigation = () => {
               </Link>
             ))}
             
-            <HeroButton variant="hero" size="sm">
-              Get Started
-            </HeroButton>
+            <div className="flex items-center space-x-3">
+              <ThemeToggle />
+              <HeroButton variant="hero" size="sm">
+                Get Started
+              </HeroButton>
+            </div>
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center">
+          <div className="md:hidden flex items-center space-x-2">
+            <ThemeToggle />
             <Button
               variant="ghost"
               size="sm"

@@ -18,6 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import Navigation from "@/components/layout/Navigation";
 import PlatformPreview from "@/components/platform/PlatformPreview";
+import SuggestedPrompts from "@/components/content/SuggestedPrompts";
 import { useToast } from "@/hooks/use-toast";
 
 const CreateContent = () => {
@@ -161,189 +162,187 @@ const CreateContent = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="max-w-4xl mx-auto space-y-8">
           {/* Content Input */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  <span>Your Original Content</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea
-                  placeholder="Enter your content idea, script, or message here. Our AI will adapt it for each platform..."
-                  value={originalContent}
-                  onChange={(e) => setOriginalContent(e.target.value)}
-                  className="min-h-[200px] text-base"
-                />
-                <div className="text-sm text-muted-foreground">
-                  {originalContent.length} characters
-                </div>
-              </CardContent>
-            </Card>
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                <span>Your Original Content</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Textarea
+                placeholder="Enter your content idea, script, or message here. Our AI will adapt it for each platform..."
+                value={originalContent}
+                onChange={(e) => setOriginalContent(e.target.value)}
+                className="min-h-[200px] text-base"
+              />
+              <div className="text-sm text-muted-foreground">
+                {originalContent.length} characters
+              </div>
+              
+              <SuggestedPrompts onPromptSelect={setOriginalContent} />
+            </CardContent>
+          </Card>
 
-            {/* Platform Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Select Platforms</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {platforms.map((platform) => {
-                    const Icon = platform.icon;
-                    const isSelected = selectedPlatforms.includes(platform.id);
-                    
-                    return (
-                      <div
-                        key={platform.id}
-                        className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                          isSelected 
-                            ? `border-primary bg-primary/5` 
-                            : "border-border hover:border-primary/50"
-                        }`}
-                        onClick={() => handlePlatformToggle(platform.id)}
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onChange={() => handlePlatformToggle(platform.id)}
-                          />
-                          <Icon className={`w-5 h-5 ${platform.color === 'instagram' ? 'text-instagram' : 
-                            platform.color === 'twitter' ? 'text-twitter' :
-                            platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
-                          <div>
-                            <Label className="font-medium cursor-pointer">
-                              {platform.name}
-                            </Label>
-                            <p className="text-sm text-muted-foreground">
-                              {platform.description}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Max {platform.limit.toLocaleString()} chars
-                            </p>
-                          </div>
+          {/* Platform Selection */}
+          <Card className="w-full">
+            <CardHeader>
+              <CardTitle>Select Platforms</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {platforms.map((platform) => {
+                  const Icon = platform.icon;
+                  const isSelected = selectedPlatforms.includes(platform.id);
+                  
+                  return (
+                    <div
+                      key={platform.id}
+                      className={`p-6 rounded-lg border-2 cursor-pointer transition-all ${
+                        isSelected 
+                          ? `border-primary bg-primary/5` 
+                          : "border-border hover:border-primary/50"
+                      }`}
+                      onClick={() => handlePlatformToggle(platform.id)}
+                    >
+                      <div className="flex items-center space-x-3">
+                        <Checkbox
+                          checked={isSelected}
+                          onChange={() => handlePlatformToggle(platform.id)}
+                        />
+                        <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' : 
+                          platform.color === 'twitter' ? 'text-twitter' :
+                          platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
+                        <div>
+                          <Label className="font-medium cursor-pointer text-base">
+                            {platform.name}
+                          </Label>
+                          <p className="text-sm text-muted-foreground">
+                            {platform.description}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Max {platform.limit.toLocaleString()} chars
+                          </p>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
 
-            {/* Generate Button */}
-            <HeroButton
-              variant="hero"
-              size="lg"
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="w-full"
-            >
-              {isGenerating ? (
-                <>
-                  <Wand2 className="w-5 h-5 mr-2 animate-spin" />
-                  Generating Content...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Generate AI Content
-                </>
-              )}
-            </HeroButton>
+          {/* Generate Button */}
+          <HeroButton
+            variant="hero"
+            size="lg"
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="w-full py-4 text-lg"
+          >
+            {isGenerating ? (
+              <>
+                <Wand2 className="w-6 h-6 mr-2 animate-spin" />
+                Generating Content...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-6 h-6 mr-2" />
+                Generate AI Content
+              </>
+            )}
+          </HeroButton>
 
-            {/* Note about Supabase */}
-            <Card className="bg-muted/50">
-              <CardContent className="p-4">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> For full AI content generation, connect to Supabase to enable Gemini API integration. 
-                  Currently showing mock content for demonstration.
+          {/* Note about Supabase */}
+          <Card className="bg-muted/50 w-full">
+            <CardContent className="p-6">
+              <p className="text-sm text-muted-foreground">
+                <strong>Note:</strong> For full AI content generation, connect to Supabase to enable Gemini API integration. 
+                Currently showing mock content for demonstration.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Generated Content & Preview */}
+          {Object.keys(generatedContent).length > 0 ? (
+            <div className="space-y-8">
+              {selectedPlatforms.map(platformId => {
+                const platform = platforms.find(p => p.id === platformId);
+                const content = generatedContent[platformId];
+                
+                if (!platform || !content) return null;
+                
+                const Icon = platform.icon;
+                
+                return (
+                  <Card key={platformId} className="w-full">
+                    <CardHeader>
+                      <CardTitle className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' : 
+                            platform.color === 'twitter' ? 'text-twitter' :
+                            platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
+                          <span className="text-xl">{platform.name}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Save className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="p-6 bg-muted/30 rounded-lg">
+                        <p className="whitespace-pre-wrap mb-4 text-base leading-relaxed">{content.content}</p>
+                        {content.hashtags.length > 0 && (
+                          <p className="text-primary text-base">
+                            {content.hashtags.map((tag: string) => `#${tag}`).join(' ')}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex justify-between text-sm text-muted-foreground">
+                        <span>{content.characterCount} characters</span>
+                        <span className={content.characterCount > platform.limit ? 'text-destructive' : 'text-success'}>
+                          {platform.limit - content.characterCount} remaining
+                        </span>
+                      </div>
+                      
+                      {/* Platform Preview */}
+                      <div className="border-t pt-6">
+                        <h4 className="text-lg font-medium mb-4">Live Preview</h4>
+                        <PlatformPreview
+                          content={content.content}
+                          platform={platformId}
+                          hashtags={content.hashtags}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="h-96 flex items-center justify-center w-full">
+              <CardContent className="text-center">
+                <Wand2 className="w-16 h-16 text-muted-foreground mx-auto mb-6" />
+                <h3 className="text-2xl font-medium text-muted-foreground mb-3">
+                  Generated content will appear here
+                </h3>
+                <p className="text-muted-foreground">
+                  Enter your content and select platforms to get started
                 </p>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Generated Content & Preview */}
-          <div className="space-y-6">
-            {Object.keys(generatedContent).length > 0 ? (
-              <div className="space-y-6">
-                {selectedPlatforms.map(platformId => {
-                  const platform = platforms.find(p => p.id === platformId);
-                  const content = generatedContent[platformId];
-                  
-                  if (!platform || !content) return null;
-                  
-                  const Icon = platform.icon;
-                  
-                  return (
-                    <Card key={platformId}>
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Icon className={`w-5 h-5 ${platform.color === 'instagram' ? 'text-instagram' : 
-                              platform.color === 'twitter' ? 'text-twitter' :
-                              platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
-                            <span>{platform.name}</span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                            >
-                              <Copy className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Save className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="p-4 bg-muted/30 rounded-lg">
-                          <p className="whitespace-pre-wrap mb-2">{content.content}</p>
-                          {content.hashtags.length > 0 && (
-                            <p className="text-primary">
-                              {content.hashtags.map((tag: string) => `#${tag}`).join(' ')}
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{content.characterCount} characters</span>
-                          <span className={content.characterCount > platform.limit ? 'text-destructive' : 'text-success'}>
-                            {platform.limit - content.characterCount} remaining
-                          </span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-                
-                {/* Platform Preview */}
-                <div className="mt-8">
-                  <h3 className="text-xl font-semibold mb-4">Live Preview</h3>
-                  <PlatformPreview
-                    content={generatedContent[selectedPlatforms[0]]?.content || ""}
-                    platform={selectedPlatforms[0] || "instagram"}
-                    hashtags={generatedContent[selectedPlatforms[0]]?.hashtags || []}
-                  />
-                </div>
-              </div>
-            ) : (
-              <Card className="h-96 flex items-center justify-center">
-                <CardContent className="text-center">
-                  <Wand2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
-                    Generated content will appear here
-                  </h3>
-                  <p className="text-sm text-muted-foreground">
-                    Enter your content and select platforms to get started
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
