@@ -2,10 +2,11 @@ import { Button } from "@/components/ui/button";
 
 interface SuggestedPromptsProps {
   onPromptSelect: (prompt: string) => void;
+  prompts?: string[];
 }
 
-const SuggestedPrompts = ({ onPromptSelect }: SuggestedPromptsProps) => {
-  const prompts = [
+const SuggestedPrompts = ({ onPromptSelect, prompts: customPrompts }: SuggestedPromptsProps) => {
+  const defaultPrompts = [
     "Announce a new product launch",
     "Share behind-the-scenes content", 
     "Create motivational Monday post",
@@ -15,6 +16,8 @@ const SuggestedPrompts = ({ onPromptSelect }: SuggestedPromptsProps) => {
     "Weekend lifestyle content",
     "Announce collaboration"
   ];
+
+  const prompts = customPrompts || defaultPrompts;
 
   return (
     <div className="space-y-3">

@@ -9,7 +9,8 @@ import {
   Calendar, 
   Users, 
   BookOpen, 
-  Settings 
+  Settings,
+  ImageIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroButton } from "@/components/ui/hero-button";
@@ -22,6 +23,7 @@ const Navigation = () => {
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Create Content", href: "/create", icon: PenTool },
+    { name: "Image Studio", href: "/image-studio", icon: ImageIcon },
     { name: "Calendar", href: "/calendar", icon: Calendar },
     { name: "Profiles", href: "/profiles", icon: Users },
     { name: "Library", href: "/library", icon: BookOpen },

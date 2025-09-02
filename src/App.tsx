@@ -11,6 +11,7 @@ import Calendar from "./pages/Calendar";
 import Library from "./pages/Library";
 import Profiles from "./pages/Profiles";
 import Settings from "./pages/Settings";
+import ImageStudio from "./pages/ImageStudio";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
           <Route path="/library" element={<Library />} />
           <Route path="/profiles" element={<Profiles />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/image-studio" element={<ImageStudio />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
