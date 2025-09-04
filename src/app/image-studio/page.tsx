@@ -1,8 +1,10 @@
+"use client";
+
 import { useState } from 'react';
-import { 
-  Wand2, 
-  Upload, 
-  Download, 
+import {
+  Wand2,
+  Upload,
+  Download,
   Heart,
   Share2,
   Sparkles,
@@ -32,7 +34,7 @@ const ImageStudio = () => {
 
   const imageSuggestions = [
     "Professional headshot with clean background",
-    "Product showcase with modern lighting", 
+    "Product showcase with modern lighting",
     "Lifestyle photo with natural setting",
     "Brand logo design with minimalist style",
     "Social media story background",
@@ -44,7 +46,7 @@ const ImageStudio = () => {
   const editSuggestions = [
     "make it darker",
     "add sunset lighting",
-    "remove background", 
+    "remove background",
     "make it more colorful",
     "add professional lighting",
     "convert to black and white",
@@ -108,7 +110,7 @@ const ImageStudio = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -126,7 +128,7 @@ const ImageStudio = () => {
         <div className="max-w-4xl mx-auto space-y-8">
           {/* Mode Selection */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
+            <Button
               variant={mode === 'generate' ? 'default' : 'outline'}
               onClick={() => setMode('generate')}
               className="flex-1 sm:flex-none"
@@ -134,7 +136,7 @@ const ImageStudio = () => {
               <Wand2 className="w-4 h-4 mr-2" />
               Generate from Prompt
             </Button>
-            <Button 
+            <Button
               variant={mode === 'edit' ? 'default' : 'outline'}
               onClick={() => setMode('edit')}
               className="flex-1 sm:flex-none"
@@ -148,7 +150,7 @@ const ImageStudio = () => {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Image generation and editing requires Supabase integration with AI APIs. 
+              Image generation and editing requires Supabase integration with AI APIs.
               Connect to Supabase to unlock this feature with Google Gemini or other AI providers.
             </AlertDescription>
           </Alert>
@@ -164,7 +166,7 @@ const ImageStudio = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <ImageUpload 
+                <ImageUpload
                   onImageUpload={handleImageUpload}
                   disabled={isGenerating}
                 />
@@ -183,21 +185,21 @@ const ImageStudio = () => {
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
-                  placeholder={mode === 'generate' 
+                  placeholder={mode === 'generate'
                     ? "Describe the image you want to generate..."
                     : "Describe how you want to edit the image..."
                   }
                   className="min-h-24 resize-none"
                   disabled={isGenerating}
                 />
-                
-                <SuggestedPrompts 
+
+                <SuggestedPrompts
                   prompts={mode === 'generate' ? imageSuggestions : editSuggestions}
                   onPromptSelect={handleSuggestionClick}
                 />
 
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <HeroButton 
+                  <HeroButton
                     variant="hero"
                     onClick={generateImages}
                     disabled={isGenerating || !hasCredits(10)}
@@ -215,7 +217,7 @@ const ImageStudio = () => {
                       </>
                     )}
                   </HeroButton>
-                  
+
                   {credits < 50 && (
                     <Badge variant="destructive" className="self-center whitespace-nowrap">
                       Low Credits

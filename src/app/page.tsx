@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
-import { 
-  Zap, 
-  Sparkles, 
-  Target, 
-  BarChart3, 
-  Users, 
+import Link from "next/link";
+import {
+  Zap,
+  Sparkles,
+  Target,
+  BarChart3,
+  Users,
   Calendar,
   ArrowRight,
   CheckCircle
@@ -58,7 +58,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       {/* Hero Section */}
       <section className="relative py-20 px-4 overflow-hidden">
         <div className="absolute inset-0 bg-hero-gradient opacity-10"></div>
@@ -69,17 +69,17 @@ const Home = () => {
               <span className="bg-hero-gradient bg-clip-text text-transparent"> Social Content</span>
             </h1>
             <p className="text-xl md:text-2xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-              AI-powered social media management for creators, influencers, and brands. 
-              Generate platform-optimized content in seconds, not hours.
+              AI-powered social media management for creators, influencers, and brands.
+              Generate platform-optimized content in seconds, not hours
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link to="/create">
+              <Link href="/create">
                 <HeroButton variant="hero" size="xl" className="animate-pulse-soft">
                   Start Creating Free
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </HeroButton>
               </Link>
-              <Link to="/dashboard">
+              <Link href="/dashboard">
                 <HeroButton variant="hero-outline" size="xl">
                   View Dashboard
                 </HeroButton>
@@ -87,7 +87,7 @@ const Home = () => {
             </div>
           </div>
         </div>
-        
+
         {/* Floating Elements */}
         <div className="absolute top-20 left-10 w-16 h-16 bg-primary/20 rounded-full animate-float"></div>
         <div className="absolute bottom-20 right-10 w-12 h-12 bg-twitter/20 rounded-full animate-float" style={{animationDelay: "2s"}}></div>
@@ -105,7 +105,7 @@ const Home = () => {
               Powerful features designed to streamline your social media workflow and amplify your online presence.
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => {
               const Icon = feature.icon;
@@ -138,7 +138,7 @@ const Home = () => {
               Join thousands of creators who've transformed their social media strategy
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="space-y-6">
               {benefits.map((benefit, index) => (
@@ -175,7 +175,7 @@ const Home = () => {
             Start creating professional, engaging content that converts. No credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/create">
+            <Link href="/create">
               <HeroButton variant="hero-outline" size="xl" className="bg-white text-primary hover:bg-white/90">
                 Get Started Free
                 <ArrowRight className="ml-2 w-5 h-5" />

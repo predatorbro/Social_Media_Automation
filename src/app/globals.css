@@ -9,30 +9,30 @@
     /* Core background and surface colors */
     --background: 240 10% 98%;
     --foreground: 224 71% 4%;
-    
+
     --card: 0 0% 100%;
     --card-foreground: 224 71% 4%;
-    
+
     --popover: 0 0% 100%;
     --popover-foreground: 224 71% 4%;
-    
+
     /* Brand colors with purple-to-blue gradient theme */
     --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
     --primary-hover: 262 83% 50%;
-    
+
     /* Secondary brand colors */
     --secondary: 220 14.3% 95.9%;
     --secondary-foreground: 220.9 39.3% 11%;
-    
+
     /* Muted colors for subtle elements */
     --muted: 220 14.3% 95.9%;
     --muted-foreground: 220 8.9% 46.1%;
-    
+
     /* Accent colors */
     --accent: 220 14.3% 95.9%;
     --accent-foreground: 220.9 39.3% 11%;
-    
+
     /* Status colors */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
@@ -40,31 +40,31 @@
     --success-foreground: 210 40% 98%;
     --warning: 38 92% 50%;
     --warning-foreground: 210 40% 98%;
-    
+
     /* UI elements */
     --border: 220 13% 91%;
     --input: 220 13% 91%;
     --ring: 262 83% 58%;
 
     --radius: 0.75rem;
-    
+
     /* Platform-specific brand colors */
     --instagram: 315 100% 62%;
     --twitter: 203 89% 53%;
     --linkedin: 201 100% 35%;
     --facebook: 221 44% 41%;
-    
+
     /* Gradients for modern design */
     --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(203 89% 53%));
     --gradient-card: linear-gradient(135deg, hsl(0 0% 100%), hsl(240 10% 98%));
     --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(203 89% 53%) 100%);
-    
+
     /* Shadows */
     --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
     --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
     --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
     --shadow-glow: 0 0 40px hsl(262 83% 58% / 0.3);
-    
+
     /* Sidebar variables */
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -80,45 +80,45 @@
     /* Dark mode - modern and professional */
     --background: 224 71% 4%;
     --foreground: 210 40% 98%;
-    
+
     --card: 224 71% 4%;
     --card-foreground: 210 40% 98%;
-    
+
     --popover: 224 71% 4%;
     --popover-foreground: 210 40% 98%;
-    
+
     --primary: 262 83% 58%;
     --primary-foreground: 210 40% 98%;
     --primary-hover: 262 83% 50%;
-    
+
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
-    
+
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
-    
+
     --accent: 217.2 32.6% 17.5%;
     --accent-foreground: 210 40% 98%;
-    
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --success: 142 76% 36%;
     --success-foreground: 210 40% 98%;
     --warning: 38 92% 50%;
     --warning-foreground: 210 40% 98%;
-    
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 262 83% 58%;
-    
+
     /* Dark mode gradients */
     --gradient-primary: linear-gradient(135deg, hsl(262 83% 58%), hsl(203 89% 53%));
     --gradient-card: linear-gradient(135deg, hsl(224 71% 4%), hsl(217.2 32.6% 17.5%));
     --gradient-hero: linear-gradient(135deg, hsl(262 83% 58%) 0%, hsl(203 89% 53%) 100%);
-    
+
     /* Dark mode shadows */
     --shadow-glow: 0 0 40px hsl(262 83% 58% / 0.4);
-    
+
     /* Dark sidebar */
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -146,29 +146,29 @@
   .hero-gradient {
     background: var(--gradient-hero);
   }
-  
+
   /* Card with subtle gradient */
   .card-gradient {
     background: var(--gradient-card);
   }
-  
+
   /* Platform-specific accent classes */
   .instagram-accent {
     @apply bg-[hsl(var(--instagram))] text-white;
   }
-  
+
   .twitter-accent {
     @apply bg-[hsl(var(--twitter))] text-white;
   }
-  
+
   .linkedin-accent {
     @apply bg-[hsl(var(--linkedin))] text-white;
   }
-  
+
   .facebook-accent {
     @apply bg-[hsl(var(--facebook))] text-white;
   }
-  
+
   /* Custom shadows */
   .shadow-glow {
     box-shadow: var(--shadow-glow);
@@ -176,27 +176,27 @@
 }
 
 @layer utilities {
-/* Animation utilities */
-.animate-float {
-  animation: float 6s ease-in-out infinite;
-}
+  /* Animation utilities */
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
 
-.animate-pulse-soft {
-  animation: pulse-soft 3s ease-in-out infinite;
-}
+  .animate-pulse-soft {
+    animation: pulse-soft 3s ease-in-out infinite;
+  }
 
-.animate-slide-up {
-  animation: slide-up 0.5s ease-out;
-}
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out;
+  }
 
-.animate-fade-in {
-  animation: fade-in 0.6s ease-out;
-}
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out;
+  }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
 }
 
 @keyframes float {
@@ -210,7 +210,7 @@
 }
 
 @keyframes slide-up {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(30px);
   }

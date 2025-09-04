@@ -1,10 +1,12 @@
+"use client";
+
 import { useState } from "react";
-import { 
-  User, 
-  Bell, 
-  Palette, 
-  Database, 
-  Key, 
+import {
+  User,
+  Bell,
+  Palette,
+  Database,
+  Key,
   Shield,
   Moon,
   Sun,
@@ -76,7 +78,7 @@ const Settings = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
@@ -207,7 +209,7 @@ const Settings = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label>Theme</Label>
-                <Select value={settings.preferences.theme} onValueChange={(value) => 
+                <Select value={settings.preferences.theme} onValueChange={(value) =>
                   setSettings(prev => ({
                     ...prev,
                     preferences: { ...prev.preferences, theme: value }
@@ -238,9 +240,9 @@ const Settings = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <Separator />
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Auto-save Drafts</p>
@@ -251,9 +253,9 @@ const Settings = () => {
                   onCheckedChange={() => handlePreferenceToggle('autoSave')}
                 />
               </div>
-              
+
               <Separator />
-              
+
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">Content Templates</p>
@@ -283,7 +285,7 @@ const Settings = () => {
                   <p className="text-sm text-muted-foreground">Your data is stored locally in your browser</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3 p-4 rounded-lg bg-muted/50">
                 <Key className="w-5 h-5 text-primary" />
                 <div>
@@ -304,10 +306,10 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-muted-foreground">
-                To unlock the full potential of SocialFlow, including AI content generation, user authentication, 
+                To unlock the full potential of SocialFlow, including AI content generation, user authentication,
                 and data persistence, you'll need to connect to Supabase.
               </p>
-              
+
               <div className="bg-muted/50 p-4 rounded-lg">
                 <h4 className="font-medium mb-2">What you'll get with Supabase:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
@@ -318,7 +320,7 @@ const Settings = () => {
                   <li>• Advanced analytics and insights</li>
                 </ul>
               </div>
-              
+
               <HeroButton variant="hero" className="flex items-center space-x-2">
                 <Database className="w-4 h-4" />
                 <span>Connect to Supabase</span>

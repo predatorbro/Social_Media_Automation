@@ -1,9 +1,11 @@
+"use client";
+
 import { useState } from "react";
-import { 
-  Plus, 
-  Instagram, 
-  Twitter, 
-  Linkedin, 
+import {
+  Plus,
+  Instagram,
+  Twitter,
+  Linkedin,
   Facebook,
   ExternalLink,
   Settings,
@@ -100,7 +102,7 @@ const Profiles = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
@@ -112,7 +114,7 @@ const Profiles = () => {
               Manage your connected social media accounts
             </p>
           </div>
-          
+
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <HeroButton variant="hero" className="flex items-center space-x-2 mt-4 md:mt-0">
@@ -172,7 +174,7 @@ const Profiles = () => {
           {socialProfiles.map(profile => {
             const Icon = getPlatformIcon(profile.platform);
             const colorClass = getPlatformColor(profile.platform);
-            
+
             return (
               <Card key={profile.id} className="group hover:shadow-lg transition-all duration-300">
                 <CardHeader>
@@ -200,7 +202,7 @@ const Profiles = () => {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {profile.verified && (
                         <CheckCircle className="w-4 h-4 text-blue-500" />
@@ -211,7 +213,7 @@ const Profiles = () => {
                     </div>
                   </div>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   {/* Profile Stats */}
                   <div className="grid grid-cols-2 gap-4">
@@ -252,7 +254,7 @@ const Profiles = () => {
                       <Edit className="w-4 h-4 mr-1" />
                       Edit
                     </Button>
-                    
+
                     {profile.connected ? (
                       <Button variant="ghost" size="sm" className="text-warning">
                         <AlertCircle className="w-4 h-4 mr-1" />

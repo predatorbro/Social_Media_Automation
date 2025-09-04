@@ -1,8 +1,11 @@
-import { 
-  BarChart3, 
-  PlusCircle, 
-  Calendar, 
-  Users, 
+"use client";
+
+import Link from "next/link";
+import {
+  BarChart3,
+  PlusCircle,
+  Calendar,
+  Users,
   TrendingUp,
   Instagram,
   Twitter,
@@ -12,7 +15,6 @@ import {
   Clock,
   Target
 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeroButton } from "@/components/ui/hero-button";
 import { Button } from "@/components/ui/button";
@@ -103,7 +105,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
@@ -116,13 +118,13 @@ const Dashboard = () => {
             </p>
           </div>
           <div className="flex gap-3 mt-4 md:mt-0">
-            <Link to="/create">
+            <Link href="/create">
               <HeroButton variant="hero" className="flex items-center space-x-2">
                 <PlusCircle className="w-4 h-4" />
                 <span>Create Content</span>
               </HeroButton>
             </Link>
-            <Link to="/calendar">
+            <Link href="/calendar">
               <Button variant="outline" className="flex items-center space-x-2">
                 <Calendar className="w-4 h-4" />
                 <span>View Calendar</span>
@@ -163,7 +165,7 @@ const Dashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
                   <span>Recent Content</span>
-                  <Link to="/library">
+                  <Link href="/library">
                     <Button variant="ghost" size="sm">
                       View All
                     </Button>
@@ -221,9 +223,9 @@ const Dashboard = () => {
                             platform.connected ? 'bg-success/10' : 'bg-muted'
                           }`}>
                             <Icon className={`w-4 h-4 ${
-                              platform.color === 'instagram' ? 'text-instagram' : 
+                              platform.color === 'instagram' ? 'text-instagram' :
                               platform.color === 'twitter' ? 'text-twitter' :
-                              platform.color === 'linkedin' ? 'text-linkedin' : 
+                              platform.color === 'linkedin' ? 'text-linkedin' :
                               platform.color === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
                             }`} />
                           </div>
@@ -242,7 +244,7 @@ const Dashboard = () => {
                   })}
                 </div>
                 <div className="mt-4 pt-4 border-t">
-                  <Link to="/profiles">
+                  <Link href="/profiles">
                     <Button variant="outline" size="sm" className="w-full">
                       Manage Profiles
                     </Button>
@@ -257,19 +259,19 @@ const Dashboard = () => {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Link to="/create" className="block">
+                <Link href="/create" className="block">
                   <Button variant="ghost" className="w-full justify-start">
                     <PlusCircle className="w-4 h-4 mr-2" />
                     Create New Content
                   </Button>
                 </Link>
-                <Link to="/calendar" className="block">
+                <Link href="/calendar" className="block">
                   <Button variant="ghost" className="w-full justify-start">
                     <Calendar className="w-4 h-4 mr-2" />
                     Schedule Posts
                   </Button>
                 </Link>
-                <Link to="/library" className="block">
+                <Link href="/library" className="block">
                   <Button variant="ghost" className="w-full justify-start">
                     <BookOpen className="w-4 h-4 mr-2" />
                     Browse Library
@@ -294,7 +296,7 @@ const Dashboard = () => {
               <div>
                 <h3 className="font-semibold text-lg mb-2">Pro Tip</h3>
                 <p className="text-white/90 mb-4">
-                  Connect to Supabase to unlock AI-powered content generation, user authentication, 
+                  Connect to Supabase to unlock AI-powered content generation, user authentication,
                   and data persistence for the full SocialFlow experience.
                 </p>
                 <Button variant="secondary" size="sm">

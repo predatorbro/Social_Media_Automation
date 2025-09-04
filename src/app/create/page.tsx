@@ -1,9 +1,11 @@
+"use client";
+
 import { useState } from "react";
-import { 
-  Sparkles, 
-  Instagram, 
-  Twitter, 
-  Linkedin, 
+import {
+  Sparkles,
+  Instagram,
+  Twitter,
+  Linkedin,
   Facebook,
   Wand2,
   Copy,
@@ -23,13 +25,13 @@ import PlatformPreview from "@/components/platform/PlatformPreview";
 import SuggestedPrompts from "@/components/content/SuggestedPrompts";
 import ScheduleModal, { ScheduleData } from "@/components/content/ScheduleModal";
 import { useToast } from "@/hooks/use-toast";
-import { 
-  saveContent, 
-  saveScheduledPost, 
+import {
+  saveContent,
+  saveScheduledPost,
   saveCalendarEvent,
-  type SavedContent, 
-  type ScheduledPost, 
-  type CalendarEvent 
+  type SavedContent,
+  type ScheduledPost,
+  type CalendarEvent
 } from "@/utils/storage";
 
 const CreateContent = () => {
@@ -44,34 +46,34 @@ const CreateContent = () => {
   const { toast } = useToast();
 
   const platforms = [
-    { 
-      id: "instagram", 
-      name: "Instagram", 
-      icon: Instagram, 
+    {
+      id: "instagram",
+      name: "Instagram",
+      icon: Instagram,
       color: "instagram",
       limit: 2200,
       description: "Visual storytelling with engaging captions"
     },
-    { 
-      id: "twitter", 
-      name: "Twitter/X", 
-      icon: Twitter, 
+    {
+      id: "twitter",
+      name: "Twitter/X",
+      icon: Twitter,
       color: "twitter",
       limit: 280,
       description: "Concise, trending conversations"
     },
-    { 
-      id: "linkedin", 
-      name: "LinkedIn", 
-      icon: Linkedin, 
+    {
+      id: "linkedin",
+      name: "LinkedIn",
+      icon: Linkedin,
       color: "linkedin",
       limit: 3000,
       description: "Professional insights and thought leadership"
     },
-    { 
-      id: "facebook", 
-      name: "Facebook", 
-      icon: Facebook, 
+    {
+      id: "facebook",
+      name: "Facebook",
+      icon: Facebook,
       color: "facebook",
       limit: 63206,
       description: "Community-focused engagement"
@@ -79,8 +81,8 @@ const CreateContent = () => {
   ];
 
   const handlePlatformToggle = (platformId: string) => {
-    setSelectedPlatforms(prev => 
-      prev.includes(platformId) 
+    setSelectedPlatforms(prev =>
+      prev.includes(platformId)
         ? prev.filter(id => id !== platformId)
         : [...prev, platformId]
     );
@@ -111,7 +113,7 @@ const CreateContent = () => {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     const mockGeneratedContent: Record<string, any> = {};
-    
+
     selectedPlatforms.forEach(platform => {
       // Mock content generation based on platform
       let content = originalContent;
@@ -123,8 +125,8 @@ const CreateContent = () => {
           hashtags = ["content", "creator", "socialmedia", "inspiration", "community"];
           break;
         case "twitter":
-          content = originalContent.length > 250 ? 
-            `${originalContent.substring(0, 250)}...` : 
+          content = originalContent.length > 250 ?
+            `${originalContent.substring(0, 250)}...` :
             `${originalContent}\n\n#Thread 🧵`;
           hashtags = ["twitter", "content", "creator"];
           break;
@@ -151,7 +153,7 @@ const CreateContent = () => {
     // Auto-save to content library using proper data structure
     const contentId = Date.now().toString();
     setCurrentContentId(contentId);
-    
+
     const contentItem: SavedContent = {
       id: contentId,
       originalPrompt: originalContent,
@@ -181,7 +183,7 @@ const CreateContent = () => {
 
   const handleSaveToLibrary = (platformId: string) => {
     if (!currentContentId) return;
-    
+
     toast({
       title: "Already Saved!",
       description: "Content is automatically saved to your library when generated."
@@ -241,7 +243,7 @@ const CreateContent = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
@@ -272,7 +274,7 @@ const CreateContent = () => {
               <div className="text-sm text-muted-foreground">
                 {originalContent.length} characters
               </div>
-              
+
               <SuggestedPrompts onPromptSelect={setOriginalContent} />
             </CardContent>
           </Card>
@@ -287,13 +289,13 @@ const CreateContent = () => {
                 {platforms.map((platform) => {
                   const Icon = platform.icon;
                   const isSelected = selectedPlatforms.includes(platform.id);
-                  
+
                   return (
                     <div
                       key={platform.id}
                       className={`p-6 rounded-lg border-2 cursor-pointer transition-all ${
-                        isSelected 
-                          ? `border-primary bg-primary/5` 
+                        isSelected
+                          ? `border-primary bg-primary/5`
                           : "border-border hover:border-primary/50"
                       }`}
                       onClick={() => handlePlatformToggle(platform.id)}
@@ -303,7 +305,7 @@ const CreateContent = () => {
                           checked={isSelected}
                           onChange={() => handlePlatformToggle(platform.id)}
                         />
-                        <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' : 
+                        <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' :
                           platform.color === 'twitter' ? 'text-twitter' :
                           platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
                         <div>
@@ -350,7 +352,7 @@ const CreateContent = () => {
           <Card className="bg-muted/50 w-full">
             <CardContent className="p-6">
               <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> For full AI content generation, connect to Supabase to enable Gemini API integration. 
+                <strong>Note:</strong> For full AI content generation, connect to Supabase to enable Gemini API integration.
                 Currently showing mock content for demonstration.
               </p>
             </CardContent>
@@ -362,17 +364,17 @@ const CreateContent = () => {
               {selectedPlatforms.map(platformId => {
                 const platform = platforms.find(p => p.id === platformId);
                 const content = generatedContent[platformId];
-                
+
                 if (!platform || !content) return null;
-                
+
                 const Icon = platform.icon;
-                
+
                 return (
                   <Card key={platformId} className="w-full">
                     <CardHeader>
                       <CardTitle className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' : 
+                          <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' :
                             platform.color === 'twitter' ? 'text-twitter' :
                             platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
                           <span className="text-xl">{platform.name}</span>
@@ -386,8 +388,8 @@ const CreateContent = () => {
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             size="sm"
                             onClick={() => handleSaveToLibrary(platformId)}
                             title="Save to library"
@@ -420,7 +422,7 @@ const CreateContent = () => {
                           {platform.limit - content.characterCount} remaining
                         </span>
                       </div>
-                      
+
                       {/* Action Buttons */}
                       <div className="flex flex-wrap gap-2 pt-4 border-t">
                         <Button

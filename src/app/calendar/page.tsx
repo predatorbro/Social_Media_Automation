@@ -1,10 +1,12 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { 
-  Calendar as CalendarIcon, 
-  Plus, 
-  Instagram, 
-  Twitter, 
-  Linkedin, 
+import {
+  Calendar as CalendarIcon,
+  Plus,
+  Instagram,
+  Twitter,
+  Linkedin,
   Facebook,
   ChevronLeft,
   ChevronRight,
@@ -74,17 +76,17 @@ const Calendar = () => {
     const startingDayOfWeek = firstDay.getDay();
 
     const days = [];
-    
+
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null);
     }
-    
+
     // Add all days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(day);
     }
-    
+
     return days;
   };
 
@@ -122,7 +124,7 @@ const Calendar = () => {
 
     const newEvents = [...events, newEvent];
     saveEvents(newEvents);
-    
+
     setFormData({
       title: '',
       content: '',
@@ -161,11 +163,11 @@ const Calendar = () => {
       platform: formData.platforms
     };
 
-    const newEvents = events.map(event => 
+    const newEvents = events.map(event =>
       event.id === editingEvent.id ? updatedEvent : event
     );
     saveEvents(newEvents);
-    
+
     setFormData({
       title: '',
       content: '',
@@ -187,7 +189,7 @@ const Calendar = () => {
   const handlePlatformChange = (platform: string, checked: boolean) => {
     setFormData(prev => ({
       ...prev,
-      platforms: checked 
+      platforms: checked
         ? [...prev.platforms, platform]
         : prev.platforms.filter(p => p !== platform)
     }));
@@ -223,7 +225,7 @@ const Calendar = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
@@ -268,17 +270,17 @@ const Calendar = () => {
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="grid grid-cols-7 gap-2">
                   {getDaysInMonth(currentDate).map((day, index) => {
                     const content = day ? getContentForDate(day) : [];
-                    
+
                     return (
                       <div
                         key={index}
                         className={`min-h-[100px] p-2 border rounded-lg ${
-                          day 
-                            ? "bg-card hover:bg-muted/30 cursor-pointer transition-colors" 
+                          day
+                            ? "bg-card hover:bg-muted/30 cursor-pointer transition-colors"
                             : "bg-muted/20"
                         }`}
                         onClick={() => day && handleDateClick(day)}
@@ -434,7 +436,7 @@ const Calendar = () => {
             <Card className="bg-muted/50">
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> Events are saved locally in your browser. 
+                  <strong>Note:</strong> Events are saved locally in your browser.
                   Connect to Supabase for cloud sync and actual post scheduling.
                 </p>
               </CardContent>
@@ -460,7 +462,7 @@ const Calendar = () => {
                   placeholder="Event title"
                 />
               </div>
-              
+
               <div>
                 <Label htmlFor="content">Content</Label>
                 <Textarea
@@ -482,12 +484,12 @@ const Calendar = () => {
                     onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
                   />
                 </div>
-                
+
                 <div>
                   <Label htmlFor="type">Type</Label>
-                  <Select 
-                    value={formData.type} 
-                    onValueChange={(value: 'post' | 'story' | 'reel') => 
+                  <Select
+                    value={formData.type}
+                    onValueChange={(value: 'post' | 'story' | 'reel') =>
                       setFormData(prev => ({ ...prev, type: value }))
                     }
                   >
@@ -511,7 +513,7 @@ const Calendar = () => {
                       <Checkbox
                         id={platform}
                         checked={formData.platforms.includes(platform)}
-                        onCheckedChange={(checked) => 
+                        onCheckedChange={(checked) =>
                           handlePlatformChange(platform, checked as boolean)
                         }
                       />
@@ -524,8 +526,8 @@ const Calendar = () => {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setIsCreateDialogOpen(false);
                     setEditingEvent(null);
@@ -541,7 +543,7 @@ const Calendar = () => {
                 >
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={editingEvent ? handleUpdateEvent : handleCreateEvent}
                   className="flex-1"
                 >

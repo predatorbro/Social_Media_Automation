@@ -1,14 +1,17 @@
+"use client";
+
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { 
-  Zap, 
-  Menu, 
-  X, 
-  Home, 
-  PenTool, 
-  Calendar, 
-  Users, 
-  BookOpen, 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  Zap,
+  Menu,
+  X,
+  Home,
+  PenTool,
+  Calendar,
+  Users,
+  BookOpen,
   Settings,
   ImageIcon
 } from "lucide-react";
@@ -18,7 +21,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
+  const pathname = usePathname();
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -30,14 +33,14 @@ const Navigation = () => {
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => pathname === path;
 
   return (
     <nav className="bg-card/80 backdrop-blur-sm border-b sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-hero-gradient rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
@@ -50,7 +53,7 @@ const Navigation = () => {
             {navigation.map((item) => (
               <Link
                 key={item.name}
-                to={item.href}
+                href={item.href}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? "text-primary bg-primary/10"
@@ -91,7 +94,7 @@ const Navigation = () => {
             {navigation.map((item) => (
               <Link
                 key={item.name}
-                to={item.href}
+                href={item.href}
                 className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
                   isActive(item.href)
                     ? "text-primary bg-primary/10"

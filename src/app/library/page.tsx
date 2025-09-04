@@ -1,3 +1,5 @@
+"use client";
+
 import Navigation from '@/components/layout/Navigation';
 import ContentManager from '@/components/content/ContentManager';
 
@@ -5,7 +7,7 @@ const Library = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
-      
+
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-8">
