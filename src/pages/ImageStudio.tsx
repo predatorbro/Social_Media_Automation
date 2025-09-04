@@ -109,70 +109,70 @@ const ImageStudio = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Image Studio
-            </h1>
-            <p className="text-lg text-muted-foreground">
-              Generate and edit images with AI-powered tools
-            </p>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl md:text-5xl font-bold text-foreground mb-4">
+            Image Studio
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Generate and edit images with AI-powered tools
+          </p>
+          <div className="flex justify-center mt-6">
+            <CreditDisplay />
           </div>
-          <CreditDisplay />
         </div>
 
-        {/* Mode Selection */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          <Button 
-            variant={mode === 'generate' ? 'default' : 'outline'}
-            onClick={() => setMode('generate')}
-            className="flex-1 sm:flex-none"
-          >
-            <Wand2 className="w-4 h-4 mr-2" />
-            Generate from Prompt
-          </Button>
-          <Button 
-            variant={mode === 'edit' ? 'default' : 'outline'}
-            onClick={() => setMode('edit')}
-            className="flex-1 sm:flex-none"
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            Upload & Edit
-          </Button>
-        </div>
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* Mode Selection */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              variant={mode === 'generate' ? 'default' : 'outline'}
+              onClick={() => setMode('generate')}
+              className="flex-1 sm:flex-none"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              Generate from Prompt
+            </Button>
+            <Button 
+              variant={mode === 'edit' ? 'default' : 'outline'}
+              onClick={() => setMode('edit')}
+              className="flex-1 sm:flex-none"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload & Edit
+            </Button>
+          </div>
 
-        {/* Supabase Integration Alert */}
-        <Alert className="mb-8">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Image generation and editing requires Supabase integration with AI APIs. 
-            Connect to Supabase to unlock this feature with Google Gemini or other AI providers.
-          </AlertDescription>
-        </Alert>
+          {/* Supabase Integration Alert */}
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Image generation and editing requires Supabase integration with AI APIs. 
+              Connect to Supabase to unlock this feature with Google Gemini or other AI providers.
+            </AlertDescription>
+          </Alert>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Input Section */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {mode === 'edit' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <ImageIcon className="w-5 h-5" />
-                    <span>Upload Image</span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ImageUpload 
-                    onImageUpload={handleImageUpload}
-                    disabled={isGenerating}
-                  />
-                </CardContent>
-              </Card>
+            <Card className="w-full">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <ImageIcon className="w-5 h-5" />
+                  <span>Upload Image</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ImageUpload 
+                  onImageUpload={handleImageUpload}
+                  disabled={isGenerating}
+                />
+              </CardContent>
+            </Card>
             )}
 
-            <Card>
+            <Card className="w-full">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Sparkles className="w-5 h-5" />
@@ -226,78 +226,6 @@ const ImageStudio = () => {
                 <p className="text-xs text-muted-foreground">
                   Each generation creates 3 image variations and costs ₹10
                 </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Results Section */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Generated Images</span>
-                  {generatedImages.length > 0 && (
-                    <Badge variant="secondary">
-                      {generatedImages.length} results
-                    </Badge>
-                  )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-4">
-                  {isGenerating ? (
-                    // Loading skeletons
-                    Array.from({ length: 3 }).map((_, index) => (
-                      <ImageSkeleton 
-                        key={index} 
-                        className="aspect-square"
-                      />
-                    ))
-                  ) : generatedImages.length > 0 ? (
-                    // Generated images
-                    generatedImages.map((imageUrl, index) => (
-                      <div key={index} className="relative group">
-                        <img 
-                          src={imageUrl} 
-                          alt={`Generated image ${index + 1}`}
-                          className="w-full aspect-square object-cover rounded-lg"
-                        />
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="secondary"
-                            onClick={() => downloadImage(imageUrl, index)}
-                          >
-                            <Download className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="secondary"
-                            onClick={() => saveToFavorites(imageUrl)}
-                          >
-                            <Heart className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="secondary"
-                          >
-                            <Share2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    // Empty state
-                    <div className="aspect-square border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <ImageIcon className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">
-                          Generated images will appear here
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </CardContent>
             </Card>
           </div>

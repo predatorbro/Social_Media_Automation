@@ -133,9 +133,27 @@ const CreateContent = () => {
     setGeneratedContent(mockGeneratedContent);
     setIsGenerating(false);
 
+    // Auto-save to content library
+    const contentItem = {
+      id: Date.now().toString(),
+      title: originalContent.substring(0, 50) + (originalContent.length > 50 ? '...' : ''),
+      content: originalContent,
+      platforms: selectedPlatforms,
+      generatedContent: mockGeneratedContent,
+      status: 'draft' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      tags: []
+    };
+
+    // Save to localStorage
+    const existingContent = JSON.parse(localStorage.getItem('content-library') || '[]');
+    existingContent.push(contentItem);
+    localStorage.setItem('content-library', JSON.stringify(existingContent));
+
     toast({
       title: "Content Generated! ✨",
-      description: `Successfully created content for ${selectedPlatforms.length} platform(s).`
+      description: `Successfully created content for ${selectedPlatforms.length} platform(s) and saved to library.`
     });
   };
 
