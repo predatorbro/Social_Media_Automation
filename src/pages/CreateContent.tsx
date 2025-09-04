@@ -8,7 +8,9 @@ import {
   Wand2,
   Copy,
   Download,
-  Save
+  Save,
+  Calendar as CalendarIcon,
+  Clock
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,13 +21,26 @@ import { Label } from "@/components/ui/label";
 import Navigation from "@/components/layout/Navigation";
 import PlatformPreview from "@/components/platform/PlatformPreview";
 import SuggestedPrompts from "@/components/content/SuggestedPrompts";
+import ScheduleModal, { ScheduleData } from "@/components/content/ScheduleModal";
 import { useToast } from "@/hooks/use-toast";
+import { 
+  saveContent, 
+  saveScheduledPost, 
+  saveCalendarEvent,
+  type SavedContent, 
+  type ScheduledPost, 
+  type CalendarEvent 
+} from "@/utils/storage";
 
 const CreateContent = () => {
   const [originalContent, setOriginalContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["instagram"]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<Record<string, any>>({});
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [selectedPlatformForSchedule, setSelectedPlatformForSchedule] = useState("");
+  const [selectedContentForSchedule, setSelectedContentForSchedule] = useState("");
+  const [currentContentId, setCurrentContentId] = useState<string>("");
   const { toast } = useToast();
 
   const platforms = [
@@ -133,23 +148,22 @@ const CreateContent = () => {
     setGeneratedContent(mockGeneratedContent);
     setIsGenerating(false);
 
-    // Auto-save to content library
-    const contentItem = {
-      id: Date.now().toString(),
-      title: originalContent.substring(0, 50) + (originalContent.length > 50 ? '...' : ''),
-      content: originalContent,
-      platforms: selectedPlatforms,
+    // Auto-save to content library using proper data structure
+    const contentId = Date.now().toString();
+    setCurrentContentId(contentId);
+    
+    const contentItem: SavedContent = {
+      id: contentId,
+      originalPrompt: originalContent,
       generatedContent: mockGeneratedContent,
-      status: 'draft' as const,
+      selectedPlatforms: selectedPlatforms,
+      status: 'draft',
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      tags: []
+      updatedAt: new Date().toISOString()
     };
 
-    // Save to localStorage
-    const existingContent = JSON.parse(localStorage.getItem('content-library') || '[]');
-    existingContent.push(contentItem);
-    localStorage.setItem('content-library', JSON.stringify(existingContent));
+    // Save to localStorage using storage utility
+    saveContent(contentItem);
 
     toast({
       title: "Content Generated! ✨",
@@ -163,6 +177,65 @@ const CreateContent = () => {
       title: "Copied!",
       description: "Content copied to clipboard."
     });
+  };
+
+  const handleSaveToLibrary = (platformId: string) => {
+    if (!currentContentId) return;
+    
+    toast({
+      title: "Already Saved!",
+      description: "Content is automatically saved to your library when generated."
+    });
+  };
+
+  const handleSchedulePost = (platformId: string, content: string) => {
+    setSelectedPlatformForSchedule(platformId);
+    setSelectedContentForSchedule(content);
+    setScheduleModalOpen(true);
+  };
+
+  const handleScheduleConfirm = (scheduleData: ScheduleData) => {
+    if (!currentContentId) return;
+
+    // Create scheduled post
+    const scheduledPost: ScheduledPost = {
+      id: Date.now().toString(),
+      contentId: currentContentId,
+      platform: selectedPlatformForSchedule,
+      content: selectedContentForSchedule,
+      scheduledDate: scheduleData.date.toISOString(),
+      scheduledTime: scheduleData.time,
+      timezone: scheduleData.timezone,
+      recurring: scheduleData.recurring ? {
+        ...scheduleData.recurring,
+        endDate: scheduleData.recurring.endDate?.toISOString()
+      } : undefined,
+      status: 'scheduled',
+      createdAt: new Date().toISOString()
+    };
+
+    saveScheduledPost(scheduledPost);
+
+    // Create calendar event for the scheduled post
+    const calendarEvent: CalendarEvent = {
+      id: Date.now().toString() + '_cal',
+      date: scheduleData.date.toISOString().split('T')[0],
+      title: `${selectedPlatformForSchedule.charAt(0).toUpperCase() + selectedPlatformForSchedule.slice(1)} Post`,
+      content: selectedContentForSchedule.substring(0, 100) + '...',
+      platform: [selectedPlatformForSchedule],
+      type: 'post',
+      time: scheduleData.time,
+      scheduledPostId: scheduledPost.id
+    };
+
+    saveCalendarEvent(calendarEvent);
+
+    toast({
+      title: "Post Scheduled! 📅",
+      description: `${selectedPlatformForSchedule.charAt(0).toUpperCase() + selectedPlatformForSchedule.slice(1)} post scheduled for ${scheduleData.date.toLocaleDateString()}`
+    });
+
+    setScheduleModalOpen(false);
   };
 
   return (
@@ -309,11 +382,25 @@ const CreateContent = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                            title="Copy to clipboard"
                           >
                             <Copy className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleSaveToLibrary(platformId)}
+                            title="Save to library"
+                          >
                             <Save className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleSchedulePost(platformId, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                            title="Schedule post"
+                          >
+                            <CalendarIcon className="w-4 h-4" />
                           </Button>
                         </div>
                       </CardTitle>
@@ -334,6 +421,37 @@ const CreateContent = () => {
                         </span>
                       </div>
                       
+                      {/* Action Buttons */}
+                      <div className="flex flex-wrap gap-2 pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                          className="flex-1 min-w-[120px]"
+                        >
+                          <Copy className="w-4 h-4 mr-2" />
+                          Copy
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSaveToLibrary(platformId)}
+                          className="flex-1 min-w-[120px]"
+                        >
+                          <Save className="w-4 h-4 mr-2" />
+                          Save
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => handleSchedulePost(platformId, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                          className="flex-1 min-w-[120px]"
+                        >
+                          <CalendarIcon className="w-4 h-4 mr-2" />
+                          Schedule
+                        </Button>
+                      </div>
+
                       {/* Platform Preview */}
                       <div className="border-t pt-6">
                         <h4 className="text-lg font-medium mb-4">Live Preview</h4>
@@ -363,6 +481,15 @@ const CreateContent = () => {
           )}
         </div>
       </div>
+
+      {/* Schedule Modal */}
+      <ScheduleModal
+        open={scheduleModalOpen}
+        onOpenChange={setScheduleModalOpen}
+        platform={selectedPlatformForSchedule}
+        content={selectedContentForSchedule}
+        onSchedule={handleScheduleConfirm}
+      />
     </div>
   );
 };
