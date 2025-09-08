@@ -295,10 +295,10 @@ const Dashboard = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-lg mb-2">Pro Tip</h3>
-                <p className="text-white/90 mb-4">
-                  Connect to Supabase to unlock AI-powered content generation, user authentication,
-                  and data persistence for the full SocialFlow experience.
-                </p>
+<p className="text-white/90 mb-4">
+  Connect to Supabase to unlock AI'powered content generation, user's authentication,
+  and data persistence for the full SocialFlow experience.
+</p>
                 <Button variant="secondary" size="sm">
                   Learn More
                 </Button>

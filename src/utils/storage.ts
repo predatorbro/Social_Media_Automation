@@ -151,7 +151,7 @@ export const cleanupOldData = (): void => {
 // Storage monitoring
 export const getStorageUsage = () => {
   let totalSize = 0;
-  for (let key in localStorage) {
+  for (const key in localStorage) {
     if (localStorage.hasOwnProperty(key)) {
       totalSize += localStorage[key].length + key.length;
     }

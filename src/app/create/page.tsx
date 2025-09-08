@@ -38,7 +38,7 @@ const CreateContent = () => {
   const [originalContent, setOriginalContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["instagram"]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedContent, setGeneratedContent] = useState<Record<string, any>>({});
+  const [generatedContent, setGeneratedContent] = useState<Record<string, { content: string; hashtags: string[]; characterCount: number }>>({});
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [selectedPlatformForSchedule, setSelectedPlatformForSchedule] = useState("");
   const [selectedContentForSchedule, setSelectedContentForSchedule] = useState("");
@@ -112,7 +112,7 @@ const CreateContent = () => {
     // Simulate AI content generation (in real app, this would call Supabase edge function)
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    const mockGeneratedContent: Record<string, any> = {};
+    const mockGeneratedContent: Record<string, { content: string; hashtags: string[]; characterCount: number }> = {};
 
     selectedPlatforms.forEach(platform => {
       // Mock content generation based on platform

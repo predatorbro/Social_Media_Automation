@@ -196,7 +196,7 @@ export default function ScheduleModal({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Frequency</Label>
-                    <Select value={recurringType} onValueChange={(value: any) => setRecurringType(value)}>
+                    <Select value={recurringType} onValueChange={(value: 'daily' | 'weekly' | 'monthly') => setRecurringType(value)}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
@@ -225,7 +225,7 @@ export default function ScheduleModal({
                     mode="single"
                     selected={recurringEndDate}
                     onSelect={setRecurringEndDate}
-                    disabled={(date) => date < new Date() || (selectedDate && date <= selectedDate)}
+                    disabled={(date) => date < new Date() || (selectedDate ? date <= selectedDate : false)}
                     className="rounded-md border"
                   />
                 </div>
