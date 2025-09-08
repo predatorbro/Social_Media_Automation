@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   Plus,
   Instagram,
@@ -21,61 +22,26 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
+import { savePlatform, getStoredPlatforms, deletePlatform, PlatformProfile } from "@/utils/storage";
 
 const Profiles = () => {
+  const { status } = useSession();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [editingProfile, setEditingProfile] = useState<PlatformProfile | null>(null);
   const [newProfile, setNewProfile] = useState({
     platform: "",
-    username: "",
     profileUrl: ""
   });
+  const [platforms, setPlatforms] = useState<PlatformProfile[]>([]);
 
-  // Mock social profiles
-  const socialProfiles = [
-    {
-      id: 1,
-      platform: "instagram",
-      username: "@yourbrand",
-      profileUrl: "https://instagram.com/yourbrand",
-      followers: "12.5K",
-      verified: true,
-      connected: true,
-      lastSync: "2 hours ago"
-    },
-    {
-      id: 2,
-      platform: "twitter",
-      username: "@yourbrand",
-      profileUrl: "https://twitter.com/yourbrand",
-      followers: "8.2K",
-      verified: false,
-      connected: true,
-      lastSync: "1 hour ago"
-    },
-    {
-      id: 3,
-      platform: "linkedin",
-      username: "Your Brand",
-      profileUrl: "https://linkedin.com/company/yourbrand",
-      followers: "3.1K",
-      verified: true,
-      connected: true,
-      lastSync: "3 hours ago"
-    },
-    {
-      id: 4,
-      platform: "facebook",
-      username: "Your Brand Page",
-      profileUrl: "https://facebook.com/yourbrand",
-      followers: "0",
-      verified: false,
-      connected: false,
-      lastSync: "Never"
-    }
-  ];
+  useEffect(() => {
+    setPlatforms(getStoredPlatforms());
+  }, []);
 
-  const platforms = [
+  const platformOptions = [
     { id: "instagram", name: "Instagram", icon: Instagram, color: "instagram" },
     { id: "twitter", name: "Twitter/X", icon: Twitter, color: "twitter" },
     { id: "linkedin", name: "LinkedIn", icon: Linkedin, color: "linkedin" },
@@ -83,21 +49,89 @@ const Profiles = () => {
   ];
 
   const getPlatformIcon = (platform: string) => {
-    const platformData = platforms.find(p => p.id === platform);
+    const platformData = platformOptions.find(p => p.id === platform);
     return platformData?.icon || Settings;
   };
 
   const getPlatformColor = (platform: string) => {
-    const platformData = platforms.find(p => p.id === platform);
+    const platformData = platformOptions.find(p => p.id === platform);
     return platformData?.color || "muted";
   };
 
   const handleAddProfile = () => {
-    // In a real app, this would save to the database via Supabase
-    console.log("Adding profile:", newProfile);
-    setIsAddDialogOpen(false);
-    setNewProfile({ platform: "", username: "", profileUrl: "" });
+    if (newProfile.platform && newProfile.profileUrl) {
+      const platform: PlatformProfile = {
+        id: Date.now().toString(),
+        platform: newProfile.platform,
+        profileUrl: newProfile.profileUrl,
+        createdAt: new Date().toISOString()
+      };
+      savePlatform(platform);
+      setPlatforms([...platforms, platform]);
+      setIsAddDialogOpen(false);
+      setNewProfile({ platform: "", profileUrl: "" });
+    }
   };
+
+  const handleEditProfile = (profile: PlatformProfile) => {
+    setEditingProfile(profile);
+    setNewProfile({
+      platform: profile.platform,
+      profileUrl: profile.profileUrl
+    });
+    setIsAddDialogOpen(true);
+  };
+
+  const handleSaveProfile = () => {
+    if (newProfile.platform && newProfile.profileUrl) {
+      if (editingProfile) {
+        // Update existing profile
+        const updatedProfile: PlatformProfile = {
+          ...editingProfile,
+          platform: newProfile.platform,
+          profileUrl: newProfile.profileUrl
+        };
+        savePlatform(updatedProfile);
+        setPlatforms(platforms.map(p => p.id === editingProfile.id ? updatedProfile : p));
+      } else {
+        // Add new profile
+        const platform: PlatformProfile = {
+          id: Date.now().toString(),
+          platform: newProfile.platform,
+          profileUrl: newProfile.profileUrl,
+          createdAt: new Date().toISOString()
+        };
+        savePlatform(platform);
+        setPlatforms([...platforms, platform]);
+      }
+      setIsAddDialogOpen(false);
+      setNewProfile({ platform: "", profileUrl: "" });
+      setEditingProfile(null);
+    }
+  };
+
+  const handleDeleteProfile = (id: string) => {
+    deletePlatform(id);
+    setPlatforms(platforms.filter(p => p.id !== id));
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setIsAddDialogOpen(open);
+    if (!open) {
+      setNewProfile({ platform: "", profileUrl: "" });
+      setEditingProfile(null);
+    }
+  };
+
+  // Check if all platforms are already added
+  const allPlatformsAdded = platformOptions.every(platform =>
+    platforms.some(p => p.platform === platform.id)
+  );
+
+  // Show loading state while session is being determined
+  if (status === "loading") {
+    return <Loading message="Loading platforms..." />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -108,49 +142,54 @@ const Profiles = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Social Profiles
+              Connected Platforms
             </h1>
             <p className="text-lg text-muted-foreground">
               Manage your connected social media accounts
             </p>
           </div>
 
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <HeroButton variant="hero" className="flex items-center space-x-2 mt-4 md:mt-0">
-                <Plus className="w-4 h-4" />
-                <span>Add Profile</span>
-              </HeroButton>
-            </DialogTrigger>
+          {allPlatformsAdded && !editingProfile ? (
+            <div className="flex items-center space-x-2 mt-4 md:mt-0 text-muted-foreground">
+              <CheckCircle className="w-5 h-5 text-success" />
+              <span className="text-sm">All platforms connected</span>
+            </div>
+          ) : (
+            <HeroButton
+              variant="hero"
+              className="flex items-center space-x-2 mt-4 md:mt-0"
+              onClick={() => setIsAddDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4" />
+              <span>{editingProfile ? 'Edit Profile' : 'Add Platforms'}</span>
+            </HeroButton>
+          )}
+
+          <Dialog open={isAddDialogOpen} onOpenChange={handleDialogClose}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add Social Profile</DialogTitle>
+                <DialogTitle>{editingProfile ? 'Edit Social Profile' : 'Add Social Profile'}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="platform">Platform</Label>
-                  <select
-                    id="platform"
+                  <Select
                     value={newProfile.platform}
-                    onChange={(e) => setNewProfile({...newProfile, platform: e.target.value})}
-                    className="w-full mt-1 p-2 border rounded-md"
+                    onValueChange={(value) => setNewProfile({...newProfile, platform: value})}
                   >
-                    <option value="">Select platform</option>
-                    {platforms.map(platform => (
-                      <option key={platform.id} value={platform.id}>
-                        {platform.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="username">Username/Handle</Label>
-                  <Input
-                    id="username"
-                    value={newProfile.username}
-                    onChange={(e) => setNewProfile({...newProfile, username: e.target.value})}
-                    placeholder="@yourusername"
-                  />
+                    <SelectTrigger className="w-full mt-1">
+                      <SelectValue placeholder="Select platform" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {platformOptions
+                        .filter(platform => !platforms.some(p => p.platform === platform.id) || editingProfile?.platform === platform.id)
+                        .map(platform => (
+                          <SelectItem key={platform.id} value={platform.id}>
+                            {platform.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label htmlFor="profileUrl">Profile URL</Label>
@@ -161,8 +200,8 @@ const Profiles = () => {
                     placeholder="https://platform.com/yourusername"
                   />
                 </div>
-                <Button onClick={handleAddProfile} className="w-full">
-                  Add Profile
+                <Button onClick={handleSaveProfile} className="w-full">
+                  {editingProfile ? 'Update Profile' : 'Add Profile'}
                 </Button>
               </div>
             </DialogContent>
@@ -170,13 +209,13 @@ const Profiles = () => {
         </div>
 
         {/* Profiles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {socialProfiles.map(profile => {
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 min-h-80">
+          {platforms.map(profile => {
             const Icon = getPlatformIcon(profile.platform);
             const colorClass = getPlatformColor(profile.platform);
 
             return (
-              <Card key={profile.id} className="group hover:shadow-lg transition-all duration-300">
+              <Card key={profile.id} className="hover:shadow-lg transition-all duration-300 h-fit">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -197,77 +236,34 @@ const Profiles = () => {
                         <CardTitle className="text-lg capitalize">
                           {profile.platform}
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground">
-                          {profile.username}
-                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      {profile.verified && (
-                        <CheckCircle className="w-4 h-4 text-blue-500" />
-                      )}
-                      <div className={`w-3 h-3 rounded-full ${
-                        profile.connected ? 'bg-success' : 'bg-destructive'
-                      }`} />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => window.open(profile.profileUrl, '_blank')}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEditProfile(profile)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteProfile(profile.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
-
-                <CardContent className="space-y-4">
-                  {/* Profile Stats */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Followers</p>
-                      <p className="font-semibold">{profile.followers || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Status</p>
-                      <Badge className={profile.connected ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}>
-                        {profile.connected ? 'Connected' : 'Disconnected'}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  {/* Last Sync */}
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>Last sync:</span>
-                    <span>{profile.lastSync}</span>
-                  </div>
-
-                  {/* Profile URL */}
-                  <div className="flex items-center justify-between">
-                    <a
-                      href={profile.profileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-1 text-sm text-primary hover:underline"
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>View Profile</span>
-                    </a>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between pt-4 border-t opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm">
-                      <Edit className="w-4 h-4 mr-1" />
-                      Edit
-                    </Button>
-
-                    {profile.connected ? (
-                      <Button variant="ghost" size="sm" className="text-warning">
-                        <AlertCircle className="w-4 h-4 mr-1" />
-                        Disconnect
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" className="text-success">
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Connect
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
               </Card>
             );
           })}

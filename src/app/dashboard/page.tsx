@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import {
   BarChart3,
   PlusCircle,
@@ -13,75 +15,154 @@ import {
   Facebook,
   BookOpen,
   Clock,
-  Target
+  Target,
+  Image
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeroButton } from "@/components/ui/hero-button";
 import { Button } from "@/components/ui/button";
+import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
+import { getStoredPlatforms, PlatformProfile } from "@/utils/storage";
+
+interface ContentItem {
+  id: string;
+  title: string;
+  content: string;
+  platforms: string[];
+  generatedContent: {
+    [platform: string]: {
+      content: string;
+      hashtags: string[];
+      characterCount: number;
+    };
+  };
+  status: 'draft' | 'published';
+  createdAt: string;
+  updatedAt: string;
+  tags?: string[];
+  category?: string;
+}
+
+const STORAGE_KEY = 'content-library';
 
 const Dashboard = () => {
+  const { data: session, status } = useSession();
+  const [contentItems, setContentItems] = useState<ContentItem[]>([]);
+  const [platforms, setPlatforms] = useState<PlatformProfile[]>([]);
+
+  useEffect(() => {
+    loadContent();
+    loadPlatforms();
+  }, []);
+
+  const loadPlatforms = () => {
+    setPlatforms(getStoredPlatforms());
+  };
+
+  const loadContent = () => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsedContent = JSON.parse(stored);
+        setContentItems(parsedContent);
+      } catch (error) {
+        console.error('Error loading content:', error);
+        setContentItems([]);
+      }
+    }
+  };
+
+  const formatRelativeTime = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInHours < 1) {
+      return 'Just now';
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else if (diffInDays < 7) {
+      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      });
+    }
+  };
+
+  // Create combined platform list with connected status
+  const allPlatforms = [
+    { id: "instagram", name: "Instagram", icon: Instagram, color: "instagram" },
+    { id: "twitter", name: "Twitter/X", icon: Twitter, color: "twitter" },
+    { id: "linkedin", name: "LinkedIn", icon: Linkedin, color: "linkedin" },
+    { id: "facebook", name: "Facebook", icon: Facebook, color: "facebook" }
+  ];
+
+  // Get recent content (last 5 items, sorted by updatedAt)
+  const recentContent = contentItems
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 5)
+    .map(item => ({
+      id: item.id,
+      title: item.title || 'Untitled',
+      platforms: item.platforms || [],
+      created: formatRelativeTime(item.updatedAt),
+      status: item.status
+    }));
+
   const stats = [
     {
       title: "Content Created",
-      value: "127",
-      change: "+12%",
+      value: contentItems.length.toString(),
+      change: contentItems.length > 0 ? "Active" : "No content yet",
       icon: BookOpen,
-      trend: "up"
+      trend: "stable"
     },
     {
       title: "Platforms Connected",
-      value: "4",
-      change: "All active",
+      value: platforms.length.toString(),
+      change: platforms.length === allPlatforms.length ? "All connected" : `${platforms.length} of ${allPlatforms.length} connected`,
       icon: Users,
       trend: "stable"
     },
     {
       title: "This Month",
-      value: "23",
-      change: "+8 from last month",
+      value: contentItems.filter(item => {
+        const itemDate = new Date(item.createdAt);
+        const now = new Date();
+        return itemDate.getMonth() === now.getMonth() &&
+               itemDate.getFullYear() === now.getFullYear();
+      }).length.toString(),
+      change: "This month",
       icon: Calendar,
-      trend: "up"
+      trend: "stable"
     },
     {
-      title: "Avg. Engagement",
-      value: "8.4%",
-      change: "+2.1%",
+      title: "Published Content",
+      value: contentItems.filter(item => item.status === 'published').length.toString(),
+      change: "Published",
       icon: TrendingUp,
-      trend: "up"
+      trend: "stable"
     }
   ];
 
-  const recentContent = [
-    {
-      id: 1,
-      title: "Marketing Strategy Tips for 2024",
-      platforms: ["instagram", "linkedin", "twitter"],
-      created: "2 hours ago",
-      status: "draft"
-    },
-    {
-      id: 2,
-      title: "Behind the Scenes: Product Development",
-      platforms: ["instagram", "facebook"],
-      created: "1 day ago",
-      status: "scheduled"
-    },
-    {
-      id: 3,
-      title: "Industry Trends and Insights",
-      platforms: ["linkedin", "twitter"],
-      created: "3 days ago",
-      status: "published"
-    }
-  ];
-
-  const connectedPlatforms = [
-    { name: "Instagram", icon: Instagram, color: "instagram", connected: true, followers: "12.5K" },
-    { name: "Twitter/X", icon: Twitter, color: "twitter", connected: true, followers: "8.2K" },
-    { name: "LinkedIn", icon: Linkedin, color: "linkedin", connected: true, followers: "3.1K" },
-    { name: "Facebook", icon: Facebook, color: "facebook", connected: false, followers: "0" },
-  ];
+  const connectedPlatformIds = platforms.map(p => p.platform);
+  const displayPlatforms = allPlatforms
+    .map(platform => ({
+      ...platform,
+      connected: connectedPlatformIds.includes(platform.id)
+    }))
+    .sort((a, b) => {
+      // Sort connected platforms first
+      if (a.connected && !b.connected) return -1;
+      if (!a.connected && b.connected) return 1;
+      return 0;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -102,6 +183,11 @@ const Dashboard = () => {
     }
   };
 
+  // Show loading state while session is being determined
+  if (status === "loading") {
+    return <Loading message="Loading your dashboard..." />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -111,7 +197,7 @@ const Dashboard = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Welcome back! 👋
+              Welcome back{session?.user?.name ? `, ${session.user.name}` : ''}! 👋
             </h1>
             <p className="text-lg text-muted-foreground">
               Here's what's happening with your social media content
@@ -173,35 +259,53 @@ const Dashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {recentContent.map((content) => (
-                    <div key={content.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/30 transition-colors">
-                      <div className="flex-1">
-                        <h3 className="font-medium text-foreground mb-1">
-                          {content.title}
-                        </h3>
-                        <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                          <div className="flex items-center space-x-1">
-                            <Clock className="w-3 h-3" />
-                            <span>{content.created}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            {content.platforms.map((platform) => {
-                              const Icon = getPlatformIcon(platform);
-                              return (
-                                <Icon key={platform} className="w-3 h-3" />
-                              );
-                            })}
-                            <span>{content.platforms.length} platforms</span>
+                {recentContent.length === 0 ? (
+                  <div className="text-center py-8">
+                    <BookOpen className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                      No content yet
+                    </h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Create your first piece of content to get started
+                    </p>
+                    <Link href="/create">
+                      <Button>
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Create Content
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentContent.map((content) => (
+                      <div key={content.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/30 transition-colors">
+                        <div className="flex-1">
+                          <h3 className="font-medium text-foreground mb-1">
+                            {content.title}
+                          </h3>
+                          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
+                            <div className="flex items-center space-x-1">
+                              <Clock className="w-3 h-3" />
+                              <span>{content.created}</span>
+                            </div>
+                            <div className="flex items-center space-x-1">
+                              {(content.platforms || []).map((platform) => {
+                                const Icon = getPlatformIcon(platform);
+                                return (
+                                  <Icon key={platform} className="w-3 h-3" />
+                                );
+                              })}
+                              <span>{(content.platforms || []).length} platforms</span>
+                            </div>
                           </div>
                         </div>
+                        <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(content.status)}`}>
+                          {content.status}
+                        </div>
                       </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(content.status)}`}>
-                        {content.status}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -214,7 +318,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {connectedPlatforms.map((platform) => {
+                  {displayPlatforms.map((platform) => {
                     const Icon = platform.icon;
                     return (
                       <div key={platform.name} className="flex items-center justify-between">
@@ -232,7 +336,7 @@ const Dashboard = () => {
                           <div>
                             <p className="font-medium text-sm">{platform.name}</p>
                             <p className="text-xs text-muted-foreground">
-                              {platform.connected ? `${platform.followers} followers` : 'Not connected'}
+                              {platform.connected ? 'Connected' : 'Not connected'}
                             </p>
                           </div>
                         </div>
@@ -244,7 +348,7 @@ const Dashboard = () => {
                   })}
                 </div>
                 <div className="mt-4 pt-4 border-t">
-                  <Link href="/profiles">
+                  <Link href="/platforms">
                     <Button variant="outline" size="sm" className="w-full">
                       Manage Profiles
                     </Button>
@@ -265,6 +369,12 @@ const Dashboard = () => {
                     Create New Content
                   </Button>
                 </Link>
+                <Link href="/studio" className="block">
+                  <Button variant="ghost" className="w-full justify-start">
+                    <Image className="w-4 h-4 mr-2" />
+                    Generate Image
+                  </Button>
+                </Link>
                 <Link href="/calendar" className="block">
                   <Button variant="ghost" className="w-full justify-start">
                     <Calendar className="w-4 h-4 mr-2" />
@@ -277,10 +387,7 @@ const Dashboard = () => {
                     Browse Library
                   </Button>
                 </Link>
-                <Button variant="ghost" className="w-full justify-start">
-                  <BarChart3 className="w-4 h-4 mr-2" />
-                  View Analytics
-                </Button>
+                
               </CardContent>
             </Card>
           </div>

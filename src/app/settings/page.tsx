@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   User,
   Bell,
@@ -22,10 +23,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
 import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
+  const { status } = useSession();
   const [settings, setSettings] = useState({
     profile: {
       name: "Your Name",
@@ -74,6 +77,11 @@ const Settings = () => {
       }
     }));
   };
+
+  // Show loading state while session is being determined
+  if (status === "loading") {
+    return <Loading message="Loading settings..." />;
+  }
 
   return (
     <div className="min-h-screen bg-background">

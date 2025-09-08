@@ -1,7 +1,4 @@
-import { useState } from "react";
 import { Instagram, Twitter, Linkedin, Facebook, User, Heart, MessageCircle, Share, MoreHorizontal } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 
 interface PlatformPreviewProps {
   content: string;
@@ -10,8 +7,6 @@ interface PlatformPreviewProps {
 }
 
 const PlatformPreview = ({ content, platform, hashtags = [] }: PlatformPreviewProps) => {
-  const [selectedPlatform, setSelectedPlatform] = useState(platform);
-
   const platforms = [
     { id: "instagram", name: "Instagram", icon: Instagram, color: "instagram" },
     { id: "twitter", name: "Twitter/X", icon: Twitter, color: "twitter" },
@@ -183,7 +178,7 @@ const PlatformPreview = ({ content, platform, hashtags = [] }: PlatformPreviewPr
   );
 
   const renderPreview = () => {
-    switch (selectedPlatform) {
+    switch (platform) {
       case "instagram":
         return renderInstagramPreview();
       case "twitter":
@@ -198,37 +193,9 @@ const PlatformPreview = ({ content, platform, hashtags = [] }: PlatformPreviewPr
   };
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-6">
-        <div className="space-y-6">
-          {/* Platform Selector */}
-          <div className="flex flex-wrap gap-2">
-            {platforms.map((p) => {
-              const Icon = p.icon;
-              return (
-                <Button
-                  key={p.id}
-                  variant={selectedPlatform === p.id ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedPlatform(p.id)}
-                  className={`flex items-center space-x-2 ${
-                    selectedPlatform === p.id ? `${p.color}-accent` : ""
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{p.name}</span>
-                </Button>
-              );
-            })}
-          </div>
-
-          {/* Preview */}
-          <div className="flex justify-center">
-            {renderPreview()}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex justify-center">
+      {renderPreview()}
+    </div>
   );
 };
 

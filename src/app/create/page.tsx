@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import {
   Sparkles,
   Instagram,
@@ -20,6 +21,7 @@ import { HeroButton } from "@/components/ui/hero-button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
 import PlatformPreview from "@/components/platform/PlatformPreview";
 import SuggestedPrompts from "@/components/content/SuggestedPrompts";
@@ -35,6 +37,7 @@ import {
 } from "@/utils/storage";
 
 const CreateContent = () => {
+  const { status } = useSession();
   const [originalContent, setOriginalContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["instagram"]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -43,6 +46,7 @@ const CreateContent = () => {
   const [selectedPlatformForSchedule, setSelectedPlatformForSchedule] = useState("");
   const [selectedContentForSchedule, setSelectedContentForSchedule] = useState("");
   const [currentContentId, setCurrentContentId] = useState<string>("");
+  const [currentViewingPlatform, setCurrentViewingPlatform] = useState<string>("");
   const { toast } = useToast();
 
   const platforms = [
@@ -150,6 +154,11 @@ const CreateContent = () => {
     setGeneratedContent(mockGeneratedContent);
     setIsGenerating(false);
 
+    // Set the first selected platform as the default viewing platform
+    if (selectedPlatforms.length > 0) {
+      setCurrentViewingPlatform(selectedPlatforms[0]);
+    }
+
     // Auto-save to content library using proper data structure
     const contentId = Date.now().toString();
     setCurrentContentId(contentId);
@@ -240,6 +249,11 @@ const CreateContent = () => {
     setScheduleModalOpen(false);
   };
 
+  // Show loading state while session is being determined
+  if (status === "loading") {
+    return <Loading message="Loading content creation..." />;
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -293,11 +307,10 @@ const CreateContent = () => {
                   return (
                     <div
                       key={platform.id}
-                      className={`p-6 rounded-lg border-2 cursor-pointer transition-all ${
-                        isSelected
+                      className={`p-6 rounded-lg border-2 cursor-pointer transition-all ${isSelected
                           ? `border-primary bg-primary/5`
                           : "border-border hover:border-primary/50"
-                      }`}
+                        }`}
                       onClick={() => handlePlatformToggle(platform.id)}
                     >
                       <div className="flex items-center space-x-3">
@@ -307,7 +320,7 @@ const CreateContent = () => {
                         />
                         <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' :
                           platform.color === 'twitter' ? 'text-twitter' :
-                          platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
+                            platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
                         <div>
                           <Label className="font-medium cursor-pointer text-base">
                             {platform.name}
@@ -359,128 +372,127 @@ const CreateContent = () => {
           </Card>
 
           {/* Generated Content & Preview */}
-          {Object.keys(generatedContent).length > 0 ? (
-            <div className="space-y-8">
-              {selectedPlatforms.map(platformId => {
-                const platform = platforms.find(p => p.id === platformId);
-                const content = generatedContent[platformId];
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-foreground">Generated Content</h2>
+            {Object.keys(generatedContent).length > 0 && currentViewingPlatform ? (
+              <Card className="w-full">
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      {/* Platform Selection Buttons */}
+                      <div className="flex space-x-2">
+                        {selectedPlatforms.map(platformId => {
+                          const platform = platforms.find(p => p.id === platformId);
+                          if (!platform) return null;
 
-                if (!platform || !content) return null;
+                          const Icon = platform.icon;
+                          const isActive = currentViewingPlatform === platformId;
 
-                const Icon = platform.icon;
+                          return (
+                            <Button
+                              key={platformId}
+                              variant={isActive ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setCurrentViewingPlatform(platformId)}
+                              className="flex items-center space-x-2"
+                            >
+                              <Icon className={`w-4 h-4 ${platform.color === 'instagram' ? 'text-white' :
+                                platform.color === 'twitter' ? 'text-white' :
+                                  platform.color === 'linkedin' ? 'text-white' : 'text-white'}`} />
+                              <span className="hidden sm:inline">{platform.name}</span>
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {(() => {
+                    const platform = platforms.find(p => p.id === currentViewingPlatform);
+                    const content = generatedContent[currentViewingPlatform];
 
-                return (
-                  <Card key={platformId} className="w-full">
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <Icon className={`w-6 h-6 ${platform.color === 'instagram' ? 'text-instagram' :
-                            platform.color === 'twitter' ? 'text-twitter' :
-                            platform.color === 'linkedin' ? 'text-linkedin' : 'text-facebook'}`} />
-                          <span className="text-xl">{platform.name}</span>
+                    if (!platform || !content) return null;
+
+                    return (
+                      <>
+                        <div className="p-6 bg-muted/30 rounded-lg">
+                          <p className="whitespace-pre-wrap mb-4 text-base leading-relaxed">{content.content}</p>
+                          {content.hashtags.length > 0 && (
+                            <p className="text-primary text-base">
+                              {content.hashtags.map((tag: string) => `#${tag}`).join(' ')}
+                            </p>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex justify-between text-sm text-muted-foreground">
+                          <span>{content.characterCount} characters</span>
+                          <span className={content.characterCount > platform.limit ? 'text-destructive' : 'text-success'}>
+                            {platform.limit - content.characterCount} remaining
+                          </span>
+                        </div>
+
+
+
+                        {/* Platform Preview */}
+                        <div className="border-t pt-6">
+                          <h4 className="text-lg font-medium mb-4">Live Preview</h4>
+                          <PlatformPreview
+                            content={content.content}
+                            platform={currentViewingPlatform}
+                            hashtags={content.hashtags}
+                          />
+                        </div>
+
+
+                        {/* Action Buttons */}
+                        <div className="flex flex-wrap gap-2 pt-4 border-t">
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
                             onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                            title="Copy to clipboard"
+                            className="flex-1 min-w-[120px]"
                           >
-                            <Copy className="w-4 h-4" />
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="outline"
                             size="sm"
-                            onClick={() => handleSaveToLibrary(platformId)}
-                            title="Save to library"
+                            onClick={() => handleSaveToLibrary(currentViewingPlatform)}
+                            className="flex-1 min-w-[120px]"
                           >
-                            <Save className="w-4 h-4" />
+                            <Save className="w-4 h-4 mr-2" />
+                            Save
                           </Button>
                           <Button
-                            variant="ghost"
+                            variant="default"
                             size="sm"
-                            onClick={() => handleSchedulePost(platformId, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                            title="Schedule post"
+                            onClick={() => handleSchedulePost(currentViewingPlatform, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                            className="flex-1 min-w-[120px]"
                           >
-                            <CalendarIcon className="w-4 h-4" />
+                            <CalendarIcon className="w-4 h-4 mr-2" />
+                            Schedule
                           </Button>
                         </div>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="p-6 bg-muted/30 rounded-lg">
-                        <p className="whitespace-pre-wrap mb-4 text-base leading-relaxed">{content.content}</p>
-                        {content.hashtags.length > 0 && (
-                          <p className="text-primary text-base">
-                            {content.hashtags.map((tag: string) => `#${tag}`).join(' ')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex justify-between text-sm text-muted-foreground">
-                        <span>{content.characterCount} characters</span>
-                        <span className={content.characterCount > platform.limit ? 'text-destructive' : 'text-success'}>
-                          {platform.limit - content.characterCount} remaining
-                        </span>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex flex-wrap gap-2 pt-4 border-t">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                          className="flex-1 min-w-[120px]"
-                        >
-                          <Copy className="w-4 h-4 mr-2" />
-                          Copy
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleSaveToLibrary(platformId)}
-                          className="flex-1 min-w-[120px]"
-                        >
-                          <Save className="w-4 h-4 mr-2" />
-                          Save
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => handleSchedulePost(platformId, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                          className="flex-1 min-w-[120px]"
-                        >
-                          <CalendarIcon className="w-4 h-4 mr-2" />
-                          Schedule
-                        </Button>
-                      </div>
-
-                      {/* Platform Preview */}
-                      <div className="border-t pt-6">
-                        <h4 className="text-lg font-medium mb-4">Live Preview</h4>
-                        <PlatformPreview
-                          content={content.content}
-                          platform={platformId}
-                          hashtags={content.hashtags}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          ) : (
-            <Card className="h-96 flex items-center justify-center w-full">
-              <CardContent className="text-center">
-                <Wand2 className="w-16 h-16 text-muted-foreground mx-auto mb-6" />
-                <h3 className="text-2xl font-medium text-muted-foreground mb-3">
-                  Generated content will appear here
-                </h3>
-                <p className="text-muted-foreground">
-                  Enter your content and select platforms to get started
-                </p>
-              </CardContent>
-            </Card>
-          )}
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="h-96 flex items-center justify-center w-full">
+                <CardContent className="text-center">
+                  <Wand2 className="w-16 h-16 text-muted-foreground mx-auto mb-6" />
+                  <h3 className="text-2xl font-medium text-muted-foreground mb-3">
+                    No content to show
+                  </h3>
+                  <p className="text-muted-foreground">
+                    Enter your content and select platforms to get started
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
 

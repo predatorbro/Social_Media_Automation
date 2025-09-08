@@ -163,15 +163,41 @@ export const getStorageUsage = () => {
   };
 };
 
+// Platform Profiles
+export interface PlatformProfile {
+  id: string;
+  platform: string;
+  profileUrl: string;
+  createdAt: string;
+}
+
+export const savePlatform = (platform: PlatformProfile): void => {
+  const existing = getStoredPlatforms();
+  const updated = [...existing.filter(p => p.id !== platform.id), platform];
+  localStorage.setItem('platforms', JSON.stringify(updated));
+};
+
+export const getStoredPlatforms = (): PlatformProfile[] => {
+  const stored = localStorage.getItem('platforms');
+  return stored ? JSON.parse(stored) : [];
+};
+
+export const deletePlatform = (platformId: string): void => {
+  const existing = getStoredPlatforms();
+  const filtered = existing.filter(p => p.id !== platformId);
+  localStorage.setItem('platforms', JSON.stringify(filtered));
+};
+
 // Data export
 export const exportData = () => {
   const data = {
     content: getStoredContent(),
     scheduledPosts: getScheduledPosts(),
     calendarEvents: getCalendarEvents(),
+    platforms: getStoredPlatforms(),
     exportDate: new Date().toISOString()
   };
-  
+
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

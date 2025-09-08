@@ -34,6 +34,7 @@ import {
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  console.log(pathname)
   const { data: session, status } = useSession();
 
   const navigation = [
@@ -41,7 +42,7 @@ const Navigation = () => {
     { name: "Create Content", href: "/create", icon: PenTool },
     { name: "Studio", href: "/studio", icon: ImageIcon },
     { name: "Calendar", href: "/calendar", icon: Calendar },
-    { name: "Profiles", href: "/profiles", icon: Users },
+    { name: "Platforms", href: "/platforms", icon: Users },
     { name: "Library", href: "/library", icon: BookOpen },
     { name: "Settings", href: "/settings", icon: Settings },
   ];
@@ -49,11 +50,11 @@ const Navigation = () => {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="bg-card/80 backdrop-blur-sm border-b sticky top-0 z-50">
+    <nav className={`bg-card/80 backdrop-blur-sm border-b w-full top-0 z-50 ${pathname == "/" ? "fixed" : "sticky"}`} >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href="/" className="flex items-center space-x-2 focus:outline-none">
               <div className="w-8 h-8 bg-hero-gradient rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
@@ -67,13 +68,12 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.href)
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
+                className={`flex items-center juscen gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none ${isActive(item.href)
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon size={16} />
                 <span className={isActive(item.href) ? "hidden" : ""}>{item.name}</span>
               </Link>
             ))}
@@ -85,11 +85,10 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center px-2 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.href)
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
+                className={`flex items-center gap-2 px-2 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none ${isActive(item.href)
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
               >
                 <item.icon className="w-4 h-4" />
                 <span className={isActive(item.href) ? "" : "hidden"}>{item.name}</span>
@@ -97,19 +96,17 @@ const Navigation = () => {
             ))}
           </div>
 
-          <div className="hidden md:flex items-center space-x-3">
+          <div className="hidden md:flex items-center gap-2">
             <ThemeToggle />
             {session ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center px-2 hover:bg-transparent">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
-                      <AvatarFallback>
-                        {session.user?.name?.charAt(0)?.toUpperCase() || "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </Button>
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
+                    <AvatarFallback>
+                      {session.user?.name?.charAt(0)?.toUpperCase() || "U"}
+                    </AvatarFallback>
+                  </Avatar>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
@@ -126,7 +123,7 @@ const Navigation = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <HeroButton variant="hero" size="sm" onClick={() => signIn("google")}>
+              <HeroButton variant="hero" size="sm" className="focus:outline-none" onClick={() => signIn("google")}>
                 Get Started
               </HeroButton>
             )}
@@ -140,13 +137,14 @@ const Navigation = () => {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="focus:outline-none"
                   onClick={() => setIsOpen(!isOpen)}
                 >
                   {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center px-2 hover:bg-transparent">
+                    <Button variant="ghost" className="flex items-center px-2 hover:bg-transparent focus:outline-none">
                       <Avatar className="w-8 h-8">
                         <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
                         <AvatarFallback>
@@ -174,6 +172,7 @@ const Navigation = () => {
               <Button
                 variant="ghost"
                 size="sm"
+                className="focus:outline-none"
                 onClick={() => setIsOpen(!isOpen)}
               >
                 {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -191,14 +190,13 @@ const Navigation = () => {
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  isActive(item.href)
-                    ? "text-primary bg-primary/10"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
-                }`}
+                className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors focus:outline-none ${isActive(item.href)
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                  }`}
                 onClick={() => setIsOpen(false)}
               >
-                <item.icon className="w-5 h-5 mr-2" />
+                <item.icon className="w-5 h-5" />
                 <span>{item.name}</span>
               </Link>
             ))}

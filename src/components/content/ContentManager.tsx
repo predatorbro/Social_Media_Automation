@@ -112,19 +112,21 @@ const ContentManager = () => {
     toast.success('Content copied to clipboard!');
   };
 
-  const filteredContent = contentItems.filter(item => {
-    const matchesSearch = 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredContent = contentItems
+    .filter(item => {
+      const matchesSearch =
+        (item.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (item.content?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        item.tags?.some(tag => (tag?.toLowerCase() || '').includes(searchQuery.toLowerCase()));
 
-    const matchesTab = 
-      activeTab === 'all' ||
-      (activeTab === 'drafts' && item.status === 'draft') ||
-      (activeTab === 'published' && item.status === 'published');
+      const matchesTab =
+        activeTab === 'all' ||
+        (activeTab === 'drafts' && item.status === 'draft') ||
+        (activeTab === 'published' && item.status === 'published');
 
-    return matchesSearch && matchesTab;
-  });
+      return matchesSearch && matchesTab;
+    })
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
   const getPlatformColor = (platform: string) => {
     const colors: Record<string, string> = {
@@ -217,7 +219,7 @@ const ContentManager = () => {
                             {item.status}
                           </Badge>
                           <div className="flex items-center gap-1">
-                            {item.platforms.map((platform) => (
+                            {(item.platforms || []).map((platform) => (
                               <div
                                 key={platform}
                                 className={`w-3 h-3 rounded-full ${getPlatformColor(platform)}`}
