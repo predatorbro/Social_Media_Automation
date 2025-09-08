@@ -7,6 +7,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "@/components/theme-provider";
+import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,13 +33,15 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <QueryClientProvider client={queryClient}>
-          <ThemeProvider defaultTheme="dark" storageKey="socialflow-ui-theme">
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              {children}
-            </TooltipProvider>
-          </ThemeProvider>
+          <SessionProvider>
+            <ThemeProvider defaultTheme="dark" storageKey="socialflow-ui-theme">
+              <TooltipProvider>
+                <Toaster />
+                <Sonner />
+                {children}
+              </TooltipProvider>
+            </ThemeProvider>
+          </SessionProvider>
         </QueryClientProvider>
       </body>
     </html>

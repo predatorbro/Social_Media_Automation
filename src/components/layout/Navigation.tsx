@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signIn, signOut } from "next-auth/react";
 import {
   Zap,
   Menu,
@@ -13,20 +14,32 @@ import {
   Users,
   BookOpen,
   Settings,
-  ImageIcon
+  ImageIcon,
+  User,
+  LogOut
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { HeroButton } from "@/components/ui/hero-button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const { data: session, status } = useSession();
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
     { name: "Create Content", href: "/create", icon: PenTool },
-    { name: "Image Studio", href: "/image-studio", icon: ImageIcon },
+    { name: "Studio", href: "/studio", icon: ImageIcon },
     { name: "Calendar", href: "/calendar", icon: Calendar },
     { name: "Profiles", href: "/profiles", icon: Users },
     { name: "Library", href: "/library", icon: BookOpen },
@@ -49,71 +62,150 @@ const Navigation = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
+          <div className="hidden lg:flex items-center space-x-8">
+            {session && navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
                 <item.icon className="w-4 h-4" />
-                <span>{item.name}</span>
+                <span className={isActive(item.href) ? "hidden" : ""}>{item.name}</span>
               </Link>
             ))}
-            
-            <div className="flex items-center space-x-3">
-              <ThemeToggle />
-              <HeroButton variant="hero" size="sm">
+          </div>
+
+          {/* Medium Screen Navigation */}
+          <div className="hidden md:flex lg:hidden items-center space-x-4">
+            {session && navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`flex items-center px-2 py-2 rounded-md text-sm font-medium transition-colors ${
+                  isActive(item.href)
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                <span className={isActive(item.href) ? "" : "hidden"}>{item.name}</span>
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden md:flex items-center space-x-3">
+            <ThemeToggle />
+            {session ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="flex items-center px-2 hover:bg-transparent">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
+                      <AvatarFallback>
+                        {session.user?.name?.charAt(0)?.toUpperCase() || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium">{session.user?.name}</p>
+                      <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <HeroButton variant="hero" size="sm" onClick={() => signIn("google")}>
                 Get Started
               </HeroButton>
-            </div>
+            )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden flex items-center space-x-2">
+          <div className="md:hidden flex items-center ">
             <ThemeToggle />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsOpen(!isOpen)}
-            >
-              {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </Button>
+            {session ? (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsOpen(!isOpen)}
+                >
+                  {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center px-2 hover:bg-transparent">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={session.user?.image || ""} alt={session.user?.name || ""} />
+                        <AvatarFallback>
+                          {session.user?.name?.charAt(0)?.toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium">{session.user?.name}</p>
+                        <p className="text-xs text-muted-foreground">{session.user?.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => signOut()}>
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsOpen(!isOpen)}
+              >
+                {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Mobile Navigation */}
       {isOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 bg-card border-t">
-            {navigation.map((item) => (
+        <div className="md:hidden bg-card/80 backdrop-blur-sm border-t">
+          <div className="px-4 py-4 space-y-2">
+            {session && navigation.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium ${
+                className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                   isActive(item.href)
                     ? "text-primary bg-primary/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
                 onClick={() => setIsOpen(false)}
               >
-                <item.icon className="w-4 h-4" />
+                <item.icon className="w-5 h-5 mr-2" />
                 <span>{item.name}</span>
               </Link>
             ))}
-            <div className="pt-2">
-              <HeroButton variant="hero" size="sm" className="w-full">
-                Get Started
-              </HeroButton>
-            </div>
           </div>
         </div>
       )}
+
     </nav>
   );
 };

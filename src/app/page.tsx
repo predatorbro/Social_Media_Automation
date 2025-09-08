@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useSession, signIn } from "next-auth/react";
 import {
   Zap,
   Sparkles,
@@ -14,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Navigation from "@/components/layout/Navigation";
 
 const Home = () => {
+  const { data: session } = useSession();
   const features = [
     {
       icon: Sparkles,
@@ -73,12 +77,15 @@ const Home = () => {
               Generate platform-optimized content in seconds, not hours
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Link href="/create">
-                <HeroButton variant="hero" size="xl" className="animate-pulse-soft">
-                  Start Creating Free
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </HeroButton>
-              </Link>
+              <HeroButton
+                variant="hero"
+                size="xl"
+                className="animate-pulse-soft"
+                onClick={() => signIn("google")}
+              >
+                Start Creating Free
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </HeroButton>
               <Link href="/dashboard">
                 <HeroButton variant="hero-outline" size="xl">
                   View Dashboard
@@ -175,12 +182,15 @@ const Home = () => {
             Start creating professional, engaging content that converts. No credit card required.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/create">
-              <HeroButton variant="hero-outline" size="xl" className="bg-white text-primary hover:bg-white/90">
-                Get Started Free
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </HeroButton>
-            </Link>
+            <HeroButton
+              variant="hero-outline"
+              size="xl"
+              className="bg-white text-primary hover:bg-white/90"
+              onClick={() => signIn("google")}
+            >
+              Get Started Free
+              <ArrowRight className="ml-2 w-5 h-5" />
+            </HeroButton>
           </div>
           <p className="text-sm opacity-80 mt-4">
             ✨ Full functionality requires Supabase integration for AI features
