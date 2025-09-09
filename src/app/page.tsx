@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import {
   Zap,
   Sparkles,
@@ -18,7 +18,7 @@ import { HeroButton } from "@/components/ui/hero-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Navigation from "@/components/layout/Navigation";
 
-const Home = () => {
+const HomeContent = () => {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -326,6 +326,18 @@ const Home = () => {
         </div>
       </footer>
     </div>
+  );
+};
+
+const Home = () => {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 };
 
