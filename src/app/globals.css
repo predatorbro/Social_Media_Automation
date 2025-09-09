@@ -256,3 +256,77 @@
   white-space: nowrap;
   animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
 }
+
+/* Custom Slider Styling with Gradient Fill */
+.slider-custom {
+  /* Base styling */
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 0.5rem;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Webkit browsers (Chrome, Safari, Edge) */
+.slider-custom::-webkit-slider-track {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 0.5rem;
+  background: hsl(220 13% 91%);
+  border: none;
+}
+
+.slider-custom::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(262 83% 58%), hsl(203 89% 53%));
+  border: 2px solid white;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-custom::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Firefox */
+.slider-custom::-moz-range-track {
+  width: 100%;
+  height: 0.5rem;
+  border-radius: 0.5rem;
+  background: hsl(220 13% 91%);
+  border: none;
+}
+
+.slider-custom::-moz-range-thumb {
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, hsl(262 83% 58%), hsl(203 89% 53%));
+  border: 2px solid white;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-custom::-moz-range-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+/* Dark mode adjustments */
+.dark .slider-custom::-webkit-slider-track {
+  background: hsl(217.2 32.6% 17.5%);
+}
+
+.dark .slider-custom::-moz-range-track {
+  background: hsl(217.2 32.6% 17.5%);
+}

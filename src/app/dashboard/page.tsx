@@ -23,6 +23,7 @@ import { HeroButton } from "@/components/ui/hero-button";
 import { Button } from "@/components/ui/button";
 import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
+import SettingsAlert from "@/components/ui/settings-alert";
 import { getStoredPlatforms, PlatformProfile } from "@/utils/storage";
 
 interface ContentItem {
@@ -218,6 +219,9 @@ const Dashboard = () => {
             </Link>
           </div>
         </div>
+
+        {/* Settings Alert */}
+        <SettingsAlert />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

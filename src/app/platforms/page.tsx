@@ -210,63 +210,117 @@ const Profiles = () => {
 
         {/* Profiles Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 min-h-80">
-          {platforms.map(profile => {
-            const Icon = getPlatformIcon(profile.platform);
-            const colorClass = getPlatformColor(profile.platform);
-
-            return (
-              <Card key={profile.id} className="hover:shadow-lg transition-all duration-300 h-fit">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                        colorClass === 'instagram' ? 'bg-instagram/10' :
-                        colorClass === 'twitter' ? 'bg-twitter/10' :
-                        colorClass === 'linkedin' ? 'bg-linkedin/10' :
-                        colorClass === 'facebook' ? 'bg-facebook/10' : 'bg-muted'
-                      }`}>
-                        <Icon className={`w-6 h-6 ${
-                          colorClass === 'instagram' ? 'text-instagram' :
-                          colorClass === 'twitter' ? 'text-twitter' :
-                          colorClass === 'linkedin' ? 'text-linkedin' :
-                          colorClass === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
-                        }`} />
+          {platforms.length === 0 ? (
+            <div className="col-span-full">
+              <Card className="bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
+                <CardContent className="p-12 text-center">
+                  <div className="max-w-2xl mx-auto">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Plus className="w-10 h-10 text-primary" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-foreground mb-4">
+                      Connect Your Platforms
+                    </h3>
+                    <p className="text-lg text-muted-foreground mb-6">
+                      Transform your social media management with automated scheduling, content creation, and cross-platform publishing.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                      <div className="text-left">
+                        <h4 className="font-semibold text-foreground mb-2">🚀 Boost Your Reach</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Schedule posts at optimal times across all platforms to maximize engagement and grow your audience.
+                        </p>
                       </div>
-                      <div>
-                        <CardTitle className="text-lg capitalize">
-                          {profile.platform}
-                        </CardTitle>
+                      <div className="text-left">
+                        <h4 className="font-semibold text-foreground mb-2">⚡ Save Time</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Automate repetitive tasks and focus on creating amazing content instead of managing multiple accounts.
+                        </p>
+                      </div>
+                      <div className="text-left">
+                        <h4 className="font-semibold text-foreground mb-2">📊 Track Performance</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Monitor engagement, analyze trends, and optimize your strategy with detailed analytics.
+                        </p>
+                      </div>
+                      <div className="text-left">
+                        <h4 className="font-semibold text-foreground mb-2">🎨 Create Consistently</h4>
+                        <p className="text-sm text-muted-foreground">
+                          Maintain a consistent brand voice and posting schedule that keeps your audience engaged.
+                        </p>
                       </div>
                     </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(profile.profileUrl, '_blank')}
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditProfile(profile)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteProfile(profile.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <HeroButton
+                      variant="hero"
+                      className="inline-flex items-center space-x-2"
+                      onClick={() => setIsAddDialogOpen(true)}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Get Started</span>
+                    </HeroButton>
                   </div>
-                </CardHeader>
+                </CardContent>
               </Card>
-            );
-          })}
+            </div>
+          ) : (
+            platforms.map(profile => {
+              const Icon = getPlatformIcon(profile.platform);
+              const colorClass = getPlatformColor(profile.platform);
+
+              return (
+                <Card key={profile.id} className="hover:shadow-lg transition-all duration-300 h-fit">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
+                          colorClass === 'instagram' ? 'bg-instagram/10' :
+                          colorClass === 'twitter' ? 'bg-twitter/10' :
+                          colorClass === 'linkedin' ? 'bg-linkedin/10' :
+                          colorClass === 'facebook' ? 'bg-facebook/10' : 'bg-muted'
+                        }`}>
+                          <Icon className={`w-6 h-6 ${
+                            colorClass === 'instagram' ? 'text-instagram' :
+                            colorClass === 'twitter' ? 'text-twitter' :
+                            colorClass === 'linkedin' ? 'text-linkedin' :
+                            colorClass === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
+                          }`} />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg capitalize">
+                            {profile.platform}
+                          </CardTitle>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(profile.profileUrl, '_blank')}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEditProfile(profile)}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteProfile(profile.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </Card>
+              );
+            })
+          )}
         </div>
 
         {/* Info Cards */}

@@ -237,7 +237,16 @@ const Calendar = () => {
               Plan and schedule your social media content
             </p>
           </div>
-          <HeroButton variant="hero" className="flex items-center space-x-2 mt-4 md:mt-0">
+          <HeroButton
+            variant="hero"
+            className="flex items-center space-x-2 mt-4 md:mt-0"
+            onClick={() => {
+              const today = new Date();
+              const dateStr = `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}-${today.getDate().toString().padStart(2, '0')}`;
+              setSelectedDate(dateStr);
+              setIsCreateDialogOpen(true);
+            }}
+          >
             <Plus className="w-4 h-4" />
             <span>Schedule Content</span>
           </HeroButton>

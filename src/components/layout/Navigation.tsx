@@ -33,8 +33,7 @@ import {
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const pathname = usePathname();
-  console.log(pathname)
+  const pathname = usePathname(); 
   const { data: session, status } = useSession();
 
   const navigation = [

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
   Sparkles,
@@ -13,7 +13,8 @@ import {
   Download,
   Save,
   Calendar as CalendarIcon,
-  Clock
+  Clock,
+  RotateCcw
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Loading } from "@/components/ui/loading";
+import { Slider } from "@/components/ui/slider";
 import Navigation from "@/components/layout/Navigation";
 import PlatformPreview from "@/components/platform/PlatformPreview";
 import SuggestedPrompts from "@/components/content/SuggestedPrompts";
@@ -31,6 +33,10 @@ import {
   saveContent,
   saveScheduledPost,
   saveCalendarEvent,
+  getUserProfile,
+  saveCreatePageState,
+  getCreatePageState,
+  clearCreatePageState,
   type SavedContent,
   type ScheduledPost,
   type CalendarEvent
@@ -47,7 +53,38 @@ const CreateContent = () => {
   const [selectedContentForSchedule, setSelectedContentForSchedule] = useState("");
   const [currentContentId, setCurrentContentId] = useState<string>("");
   const [currentViewingPlatform, setCurrentViewingPlatform] = useState<string>("");
+  const [wordCount, setWordCount] = useState([150]);
+  const [isStrictMode, setIsStrictMode] = useState<boolean>(false);
   const { toast } = useToast();
+
+  // Load saved state on component mount
+  useEffect(() => {
+    const savedState = getCreatePageState();
+    if (savedState.originalContent) setOriginalContent(savedState.originalContent || "");
+    if (savedState.selectedPlatforms) setSelectedPlatforms(savedState.selectedPlatforms || ["instagram"]);
+    if (savedState.wordCount !== undefined) {
+      const wc = Array.isArray(savedState.wordCount) ? savedState.wordCount[0] : savedState.wordCount;
+      setWordCount([wc || 150]);
+    }
+    if (savedState.isStrictMode !== undefined) setIsStrictMode(savedState.isStrictMode || false);
+    if (savedState.generatedContent) setGeneratedContent(savedState.generatedContent || {});
+    if (savedState.currentViewingPlatform) setCurrentViewingPlatform(savedState.currentViewingPlatform || "");
+    if (savedState.currentContentId) setCurrentContentId(savedState.currentContentId || "");
+  }, []);
+
+  // Save state whenever it changes
+  useEffect(() => {
+    const stateToSave = {
+      originalContent,
+      selectedPlatforms,
+      wordCount: wordCount[0],
+      isStrictMode,
+      generatedContent,
+      currentViewingPlatform,
+      currentContentId
+    };
+    saveCreatePageState(stateToSave);
+  }, [originalContent, selectedPlatforms, wordCount, isStrictMode, generatedContent, currentViewingPlatform, currentContentId]);
 
   const platforms = [
     {
@@ -59,12 +96,12 @@ const CreateContent = () => {
       description: "Visual storytelling with engaging captions"
     },
     {
-      id: "twitter",
-      name: "Twitter/X",
-      icon: Twitter,
-      color: "twitter",
-      limit: 280,
-      description: "Concise, trending conversations"
+      id: "facebook",
+      name: "Facebook",
+      icon: Facebook,
+      color: "facebook",
+      limit: 63206,
+      description: "Community-focused engagement"
     },
     {
       id: "linkedin",
@@ -75,12 +112,12 @@ const CreateContent = () => {
       description: "Professional insights and thought leadership"
     },
     {
-      id: "facebook",
-      name: "Facebook",
-      icon: Facebook,
-      color: "facebook",
-      limit: 63206,
-      description: "Community-focused engagement"
+      id: "twitter",
+      name: "Twitter/X",
+      icon: Twitter,
+      color: "twitter",
+      limit: 280,
+      description: "Concise, trending conversations"
     },
   ];
 
@@ -152,6 +189,7 @@ const CreateContent = () => {
     });
 
     setGeneratedContent(mockGeneratedContent);
+    console.log(mockGeneratedContent)
     setIsGenerating(false);
 
     // Set the first selected platform as the default viewing platform
@@ -249,6 +287,27 @@ const CreateContent = () => {
     setScheduleModalOpen(false);
   };
 
+  const handleGenerateNewFromScratch = () => {
+    // Clear all state
+    setOriginalContent("");
+    setSelectedPlatforms(["instagram"]);
+    setGeneratedContent({});
+    setCurrentViewingPlatform("");
+    setCurrentContentId("");
+    setWordCount([150]);
+    setIsStrictMode(false);
+
+    // Clear localStorage
+    clearCreatePageState();
+
+    toast({
+      title: "Started Fresh! 🧹",
+      description: "All content and settings have been cleared. Ready for new creation!"
+    });
+
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  };
+
   // Show loading state while session is being determined
   if (status === "loading") {
     return <Loading message="Loading content creation..." />;
@@ -289,6 +348,67 @@ const CreateContent = () => {
                 {originalContent.length} characters
               </div>
 
+              {/* Content Generation Settings */}
+              <div className="space-y-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center space-x-2 mb-3">
+                  <Sparkles className="w-4 h-4 text-blue-600" />
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white">Content Settings</h4>
+                </div>
+
+                {/* Word Count Selector */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Target Word Count</Label>
+                    <div className="text-lg font-bold text-blue-600 bg-blue-50 dark:bg-blue-950/30 px-3 py-1 rounded-lg">
+                      {wordCount[0]}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Slider
+                      value={wordCount}
+                      onValueChange={setWordCount}
+                      max={500}
+                      min={50}
+                      step={25}
+                      className="w-full"
+                    />
+
+                    <div className="flex justify-between text-xs text-gray-500">
+                      <span>50</span>
+                      <span>500</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Strict Mode Toggle */}
+                <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-900 dark:text-white cursor-pointer">
+                        Strict Mode
+                      </Label>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">
+                        Generate content exactly matching word count
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    onClick={() => setIsStrictMode(!isStrictMode)}
+                    className={`relative w-12 h-6 rounded-full cursor-pointer transition-all duration-300 ease-in-out ${isStrictMode
+                      ? 'bg-green-500 hover:bg-green-600'
+                      : 'bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500'
+                      }`}
+                  >
+                    <div
+                      className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow-md transform transition-all duration-300 ease-in-out ${isStrictMode ? 'translate-x-6' : 'translate-x-0.5'
+                        }`}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
               <SuggestedPrompts onPromptSelect={setOriginalContent} />
             </CardContent>
           </Card>
@@ -308,8 +428,8 @@ const CreateContent = () => {
                     <div
                       key={platform.id}
                       className={`p-6 rounded-lg border-2 cursor-pointer transition-all ${isSelected
-                          ? `border-primary bg-primary/5`
-                          : "border-border hover:border-primary/50"
+                        ? `border-primary bg-primary/5`
+                        : "border-border hover:border-primary/50"
                         }`}
                       onClick={() => handlePlatformToggle(platform.id)}
                     >
@@ -411,71 +531,102 @@ const CreateContent = () => {
                   {(() => {
                     const platform = platforms.find(p => p.id === currentViewingPlatform);
                     const content = generatedContent[currentViewingPlatform];
+                    if (!platform) return null;
+                    if (content) {
+                      return (
+                        <>
+                          <div className="p-6 bg-muted/30 rounded-lg">
+                            <div className="flex items-start space-x-3 mb-4">
+                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="whitespace-pre-wrap text-base leading-relaxed text-foreground">
+                                  {content.content}
+                                </p>
+                              </div>
+                            </div>
+                            {content.hashtags.length > 0 && (
+                              <div className="flex items-center space-x-2 mt-4 pt-4 border-t border-border/50">
+                                <div className="w-5 h-5 text-primary/70">
+                                  <svg fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M9.5 12l-.5-1h-1l-.5 1v1h2v-1zm4 0l-.5-1h-1l-.5 1v1h2v-1z" />
+                                    <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" />
+                                  </svg>
+                                </div>
+                                <p className="text-primary text-sm font-medium">
+                                  {content.hashtags.map((tag: string) => `#${tag}`).join(' ')}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-between text-sm text-muted-foreground">
+                            <span>{content.characterCount} characters</span>
+                            <span className={content.characterCount > platform.limit ? 'text-destructive' : 'text-success'}>
+                              {platform.limit - content.characterCount} remaining
+                            </span>
+                          </div>
 
-                    if (!platform || !content) return null;
 
-                    return (
-                      <>
+
+                          {/* Platform Preview */}
+                          <div className="border-t pt-6">
+                            <h4 className="text-lg font-medium mb-4">Live Preview</h4>
+                            <PlatformPreview
+                              content={content.content}
+                              platform={currentViewingPlatform}
+                              hashtags={content.hashtags}
+                              pageName={getUserProfile().page}
+                              ownerName={getUserProfile().name}
+                            />
+                          </div>
+
+
+                          {/* Action Buttons */}
+                          <div className="flex flex-wrap gap-2 pt-4 border-t">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                              className="flex-1 min-w-[120px]"
+                            >
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSaveToLibrary(currentViewingPlatform)}
+                              className="flex-1 min-w-[120px]"
+                            >
+                              <Save className="w-4 h-4 mr-2" />
+                              Save
+                            </Button>
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => handleSchedulePost(currentViewingPlatform, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
+                              className="flex-1 min-w-[120px]"
+                            >
+                              <CalendarIcon className="w-4 h-4 mr-2" />
+                              Schedule
+                            </Button>
+                          </div>
+                        </>
+                      );
+                    } else {
+                      return (
                         <div className="p-6 bg-muted/30 rounded-lg">
-                          <p className="whitespace-pre-wrap mb-4 text-base leading-relaxed">{content.content}</p>
-                          {content.hashtags.length > 0 && (
-                            <p className="text-primary text-base">
-                              {content.hashtags.map((tag: string) => `#${tag}`).join(' ')}
-                            </p>
-                          )}
+                          <div className="text-center py-8">
+                            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                              <Wand2 className="w-6 h-6 text-muted-foreground" />
+                            </div>
+                            <p className="text-muted-foreground font-medium">No generated content to show</p>
+                            <p className="text-muted-foreground/70 text-sm mt-1">Content will appear here after generation</p>
+                          </div>
                         </div>
-                        <div className="flex justify-between text-sm text-muted-foreground">
-                          <span>{content.characterCount} characters</span>
-                          <span className={content.characterCount > platform.limit ? 'text-destructive' : 'text-success'}>
-                            {platform.limit - content.characterCount} remaining
-                          </span>
-                        </div>
-
-
-
-                        {/* Platform Preview */}
-                        <div className="border-t pt-6">
-                          <h4 className="text-lg font-medium mb-4">Live Preview</h4>
-                          <PlatformPreview
-                            content={content.content}
-                            platform={currentViewingPlatform}
-                            hashtags={content.hashtags}
-                          />
-                        </div>
-
-
-                        {/* Action Buttons */}
-                        <div className="flex flex-wrap gap-2 pt-4 border-t">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => copyToClipboard(content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                            className="flex-1 min-w-[120px]"
-                          >
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleSaveToLibrary(currentViewingPlatform)}
-                            className="flex-1 min-w-[120px]"
-                          >
-                            <Save className="w-4 h-4 mr-2" />
-                            Save
-                          </Button>
-                          <Button
-                            variant="default"
-                            size="sm"
-                            onClick={() => handleSchedulePost(currentViewingPlatform, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
-                            className="flex-1 min-w-[120px]"
-                          >
-                            <CalendarIcon className="w-4 h-4 mr-2" />
-                            Schedule
-                          </Button>
-                        </div>
-                      </>
-                    );
+                      )
+                    }
                   })()}
                 </CardContent>
               </Card>
@@ -493,6 +644,36 @@ const CreateContent = () => {
               </Card>
             )}
           </div>
+
+          {/* Generate New From Scratch Section - Only show when there's content */}
+          {Object.keys(generatedContent).length > 0 && (
+            <Card className="w-full mt-8 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-2 border-dashed border-primary/30">
+              <CardContent className="p-8">
+                <div className="text-center space-y-4">
+                  <div className="flex justify-center">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                      <RotateCcw className="w-8 h-8 text-primary" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-foreground">
+                      Ready for Something New?
+                    </h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      Start fresh with a clean slate. Clear all your current content, settings, and generated results to begin creating something completely new.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleGenerateNewFromScratch}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-base font-medium"
+                  >
+                    <RotateCcw className="w-5 h-5 mr-2" />
+                    Generate New From Scratch
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 

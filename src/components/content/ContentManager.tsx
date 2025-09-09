@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
-import { 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Edit, 
-  Trash2, 
-  Copy, 
+import Link from 'next/link';
+import {
+  Search,
+  Filter,
+  MoreVertical,
+  Edit,
+  Trash2,
+  Copy,
   Share2,
   FileText,
   Calendar,
-  Tag
+  Tag,
+  X,
+  Plus
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -77,6 +80,8 @@ const ContentManager = () => {
         console.error('Error loading content:', error);
         setContentItems([]);
       }
+    } else {
+      setContentItems([]);
     }
   };
 
@@ -114,15 +119,28 @@ const ContentManager = () => {
 
   const filteredContent = contentItems
     .filter(item => {
-      const matchesSearch =
-        (item.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        (item.content?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-        item.tags?.some(tag => (tag?.toLowerCase() || '').includes(searchQuery.toLowerCase()));
-
+      // Always apply tab filtering
       const matchesTab =
         activeTab === 'all' ||
         (activeTab === 'drafts' && item.status === 'draft') ||
         (activeTab === 'published' && item.status === 'published');
+
+      // If no search query, only apply tab filtering
+      if (!searchQuery || !searchQuery.trim()) {
+        return matchesTab;
+      }
+
+      // If there's a search query, apply both search and tab filtering
+      const query = searchQuery.toLowerCase().trim();
+
+      // Check each field with proper null checks
+      const titleMatch = item.title && item.title.toLowerCase().includes(query);
+      const contentMatch = item.content && item.content.toLowerCase().includes(query);
+      const tagMatch = item.tags && item.tags.some(tag => tag && tag.toLowerCase().includes(query));
+      const platformMatch = item.platforms && item.platforms.some(platform => platform && platform.toLowerCase().includes(query));
+      const categoryMatch = item.category && item.category.toLowerCase().includes(query);
+
+      const matchesSearch = titleMatch || contentMatch || tagMatch || platformMatch || categoryMatch;
 
       return matchesSearch && matchesTab;
     })
@@ -160,11 +178,20 @@ const ContentManager = () => {
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Search content..."
+                placeholder="Search content, platforms, tags..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full sm:w-64"
+                className={`pl-10 w-full sm:w-64 ${searchQuery ? 'pr-10' : ''}`}
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -173,34 +200,46 @@ const ContentManager = () => {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">All Contents</TabsTrigger>
-          <TabsTrigger value="drafts">Drafts</TabsTrigger>
-          <TabsTrigger value="published">Published</TabsTrigger>
+          <TabsTrigger value="all">All Contents ({contentItems.length})</TabsTrigger>
+          <TabsTrigger value="drafts">Drafts ({contentItems.filter(item => item.status === 'draft').length})</TabsTrigger>
+          <TabsTrigger value="published">Published ({contentItems.filter(item => item.status === 'published').length})</TabsTrigger>
         </TabsList>
 
-        <TabsContent value={activeTab} className="space-y-4">
+        <div className="mt-6">
           {filteredContent.length === 0 ? (
-            <Card className="w-full">
-              <CardContent className="text-center py-12">
-                <FileText className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-xl font-medium text-muted-foreground mb-2">
-                  {searchQuery ? 'No matching content found' : 'No content yet'}
+            <Card className="w-full bg-gradient-to-br from-primary/5 to-secondary/5 border-primary/20">
+              <CardContent className="text-center py-16">
+                <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-10 h-10 text-primary" />
+                </div>
+                <h3 className="text-2xl font-bold text-foreground mb-4">
+                  {searchQuery ? 'No matching content found' : 'No content to show'}
                 </h3>
-                <p className="text-muted-foreground">
-                  {searchQuery 
-                    ? 'Try adjusting your search terms or clear the search'
-                    : 'Create your first piece of content to get started'
+                <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
+                  {searchQuery
+                    ? 'Try adjusting your search terms or clear the search to see all content'
+                    : 'Your content library is empty. Start creating amazing social media content!'
                   }
                 </p>
-                {searchQuery && (
-                  <Button 
-                    variant="outline" 
-                    className="mt-4"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    Clear Search
-                  </Button>
-                )}
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  {searchQuery ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => setSearchQuery('')}
+                      className="flex items-center space-x-2"
+                    >
+                      <X className="w-4 h-4" />
+                      <span>Clear Search</span>
+                    </Button>
+                  ) : (
+                    <Link href="/create">
+                      <Button className="flex items-center space-x-2 bg-primary-gradient">
+                        <Plus className="w-4 h-4" />
+                        <span>Create Content</span>
+                      </Button>
+                    </Link>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -250,7 +289,7 @@ const ContentManager = () => {
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => updateContentStatus(
-                              item.id, 
+                              item.id,
                               item.status === 'draft' ? 'published' : 'draft'
                             )}
                           >
@@ -300,7 +339,7 @@ const ContentManager = () => {
               ))}
             </div>
           )}
-        </TabsContent>
+        </div>
       </Tabs>
 
       {/* Delete Confirmation Dialog */}

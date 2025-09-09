@@ -38,12 +38,12 @@ export interface ScheduledPost {
   contentId: string;
   platform: string;
   content: string;
-  scheduledDate: string; // ISO date string
-  scheduledTime: string; // HH:MM format
+  scheduledDate: string;
+  scheduledTime: string;
   timezone: string;
   recurring?: {
     type: 'daily' | 'weekly' | 'monthly';
-    interval: number; // every X days/weeks/months
+    interval: number;
     endDate?: string;
   };
   status: 'scheduled' | 'posted' | 'failed';
@@ -188,6 +188,112 @@ export const deletePlatform = (platformId: string): void => {
   localStorage.setItem('platforms', JSON.stringify(filtered));
 };
 
+// User Profile Settings
+export interface UserProfile {
+  name: string;
+  email: string;
+  page: string;
+}
+
+export const saveUserProfile = (profile: UserProfile): void => {
+  localStorage.setItem('user-profile', JSON.stringify(profile));
+};
+
+export const getUserProfile = (): UserProfile => {
+  const stored = localStorage.getItem('user-profile');
+  return stored ? JSON.parse(stored) : {
+    name: "Your Name",
+    email: "your.email@example.com",
+    page: "Your Company"
+  };
+};
+
+// Notification Settings
+export interface NotificationSettings {
+  emailUpdates: boolean;
+  contentReminders: boolean;
+  scheduleAlerts: boolean;
+  weeklyReports: boolean;
+}
+
+export const saveNotificationSettings = (settings: NotificationSettings): void => {
+  localStorage.setItem('notification-settings', JSON.stringify(settings));
+};
+
+export const getNotificationSettings = (): NotificationSettings => {
+  const stored = localStorage.getItem('notification-settings');
+  return stored ? JSON.parse(stored) : {
+    emailUpdates: true,
+    contentReminders: true,
+    scheduleAlerts: false,
+    weeklyReports: true
+  };
+};
+
+// Preferences Settings
+export interface PreferencesSettings {
+  theme: 'light' | 'dark' | 'system';
+  defaultPlatforms: string[];
+  autoSave: boolean;
+  contentTemplates: boolean;
+}
+
+export const savePreferencesSettings = (settings: PreferencesSettings): void => {
+  localStorage.setItem('preferences-settings', JSON.stringify(settings));
+};
+
+export const getPreferencesSettings = (): PreferencesSettings => {
+  const stored = localStorage.getItem('preferences-settings');
+  return stored ? JSON.parse(stored) : {
+    theme: 'system',
+    defaultPlatforms: ['instagram', 'twitter'],
+    autoSave: true,
+    contentTemplates: true
+  };
+};
+
+// Settings Alert Management
+export const isSettingsAlertDismissed = (): boolean => {
+  const dismissed = localStorage.getItem('settings-alert-dismissed');
+  return dismissed === 'true';
+};
+ 
+export const resetSettingsAlert = (): void => {
+  localStorage.removeItem('settings-alert-dismissed');
+};
+
+export const shouldShowSettingsAlert = (): boolean => {
+  const profile = getUserProfile();
+  const hasIncompleteSettings = !profile.name || !profile.email || !profile.page ||
+    profile.name === "Your Name" || profile.email === "your.email@example.com" || profile.page === "Your Company";
+
+  return hasIncompleteSettings && !isSettingsAlertDismissed();
+};
+
+// Create Page State Management
+export interface CreatePageState {
+  originalContent: string;
+  selectedPlatforms: string[];
+  wordCount: number;
+  isStrictMode: boolean;
+  generatedContent: Record<string, { content: string; hashtags: string[]; characterCount: number }>;
+  currentViewingPlatform: string;
+  currentContentId: string;
+}
+
+export const saveCreatePageState = (state: CreatePageState): void => {
+  localStorage.setItem('create-page-state', JSON.stringify(state));
+};
+
+export const getCreatePageState = (): Partial<CreatePageState> => {
+  const stored = localStorage.getItem('create-page-state');
+  return stored ? JSON.parse(stored) : {};
+};
+
+export const clearCreatePageState = (): void => {
+  localStorage.removeItem('create-page-state');
+};
+ 
 // Data export
 export const exportData = () => {
   const data = {
@@ -195,6 +301,7 @@ export const exportData = () => {
     scheduledPosts: getScheduledPosts(),
     calendarEvents: getCalendarEvents(),
     platforms: getStoredPlatforms(),
+    userProfile: getUserProfile(),
     exportDate: new Date().toISOString()
   };
 

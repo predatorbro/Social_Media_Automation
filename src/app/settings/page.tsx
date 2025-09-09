@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import {
   User,
@@ -13,7 +13,14 @@ import {
   Sun,
   Monitor,
   Save,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
+  Phone,
+  Mail,
+  Facebook,
+  Linkedin,
+  Github,
+  Globe
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,14 +33,30 @@ import { Separator } from "@/components/ui/separator";
 import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
 import { useToast } from "@/hooks/use-toast";
+import { useTheme } from "@/components/theme-provider";
+import {
+  saveUserProfile,
+  getUserProfile,
+  saveNotificationSettings,
+  getNotificationSettings,
+  savePreferencesSettings,
+  getPreferencesSettings,
+  NotificationSettings,
+  PreferencesSettings
+} from "@/utils/storage";
 
 const Settings = () => {
   const { status } = useSession();
-  const [settings, setSettings] = useState({
+  const { theme: currentTheme, setTheme } = useTheme();
+  const [settings, setSettings] = useState<{
+    profile: { name: string; email: string; page: string };
+    notifications: NotificationSettings;
+    preferences: PreferencesSettings;
+  }>({
     profile: {
-      name: "Your Name",
-      email: "your.email@example.com",
-      company: "Your Company"
+      name: "",
+      email: "",
+      page: ""
     },
     notifications: {
       emailUpdates: true,
@@ -51,31 +74,93 @@ const Settings = () => {
 
   const { toast } = useToast();
 
+  // Load all settings data on component mount
+  useEffect(() => {
+    const profile = getUserProfile();
+    const notifications = getNotificationSettings();
+    const preferences = getPreferencesSettings();
+
+    setSettings({
+      profile,
+      notifications,
+      preferences: {
+        ...preferences,
+        theme: currentTheme // Sync with theme provider
+      }
+    });
+  }, [currentTheme]);
+
   const handleProfileUpdate = () => {
+    // Save to localStorage
+    saveUserProfile(settings.profile);
+
     toast({
       title: "Profile Updated",
       description: "Your profile settings have been saved successfully."
     });
   };
 
-  const handleNotificationToggle = (key: string) => {
+  const handleNotificationToggle = (key: keyof NotificationSettings) => {
+    const newSettings = {
+      ...settings.notifications,
+      [key]: !settings.notifications[key]
+    };
     setSettings(prev => ({
       ...prev,
-      notifications: {
-        ...prev.notifications,
-        [key]: !prev.notifications[key as keyof typeof prev.notifications]
-      }
+      notifications: newSettings
     }));
+    saveNotificationSettings(newSettings);
   };
 
-  const handlePreferenceToggle = (key: string) => {
+  const handlePreferenceToggle = (key: keyof Omit<PreferencesSettings, 'theme' | 'defaultPlatforms'>) => {
+    const newSettings = {
+      ...settings.preferences,
+      [key]: !settings.preferences[key]
+    };
     setSettings(prev => ({
       ...prev,
-      preferences: {
-        ...prev.preferences,
-        [key]: !prev.preferences[key as keyof typeof prev.preferences]
-      }
+      preferences: newSettings
     }));
+    savePreferencesSettings(newSettings);
+  };
+
+  const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
+    // Update theme provider immediately
+    setTheme(theme);
+
+    const newSettings = {
+      ...settings.preferences,
+      theme
+    };
+    setSettings(prev => ({
+      ...prev,
+      preferences: newSettings
+    }));
+    savePreferencesSettings(newSettings);
+  };
+
+  const handleClearAllData = () => {
+    if (window.confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+      // Clear all localStorage data
+      localStorage.clear();
+
+      // Reset settings to defaults
+      const defaultProfile = { name: "Your Name", email: "your.email@example.com", page: "Your Company" };
+      const defaultNotifications = { emailUpdates: true, contentReminders: true, scheduleAlerts: false, weeklyReports: true };
+      const defaultPreferences = { theme: 'system' as const, defaultPlatforms: ['instagram', 'twitter'], autoSave: true, contentTemplates: true };
+
+      setSettings({
+        profile: defaultProfile,
+        notifications: defaultNotifications,
+        preferences: defaultPreferences
+      });
+
+      toast({
+        title: "Data Cleared",
+        description: "All data has been removed from local storage.",
+        variant: "destructive"
+      });
+    }
   };
 
   // Show loading state while session is being determined
@@ -134,13 +219,13 @@ const Settings = () => {
                 </div>
               </div>
               <div>
-                <Label htmlFor="company">Company/Organization</Label>
+                <Label htmlFor="page">Page</Label>
                 <Input
-                  id="company"
-                  value={settings.profile.company}
+                  id="page"
+                  value={settings.profile.page}
                   onChange={(e) => setSettings(prev => ({
                     ...prev,
-                    profile: { ...prev.profile, company: e.target.value }
+                    profile: { ...prev.profile, page: e.target.value }
                   }))}
                 />
               </div>
@@ -217,12 +302,7 @@ const Settings = () => {
             <CardContent className="space-y-4">
               <div>
                 <Label>Theme</Label>
-                <Select value={settings.preferences.theme} onValueChange={(value) =>
-                  setSettings(prev => ({
-                    ...prev,
-                    preferences: { ...prev.preferences, theme: value }
-                  }))
-                }>
+                <Select value={settings.preferences.theme} onValueChange={(value: 'light' | 'dark' | 'system') => handleThemeChange(value)}>
                   <SelectTrigger className="w-full mt-1">
                     <SelectValue />
                   </SelectTrigger>
@@ -336,6 +416,97 @@ const Settings = () => {
             </CardContent>
           </Card>
 
+          {/* Developer Contact */}
+          <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <User className="w-5 h-5 text-primary" />
+                <span>Contact Developer</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-4">
+                  Need help or have questions? Get in touch with the developer.
+                </p>
+
+                {/* Contact Information */}
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-center justify-center space-x-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                      onClick={() => window.open('tel:+9779822301799', '_self')}
+                    >
+                      <Phone className="w-4 h-4" />
+                      <span>+977 9822301799</span>
+                    </Button>
+                  </div>
+
+                  <div className="flex items-center justify-center space-x-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex items-center space-x-2"
+                      onClick={() => window.open('mailto:johnsah698@gmail.com', '_self')}
+                    >
+                      <Mail className="w-4 h-4" />
+                      <span>johnsah698@gmail.com</span>
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Social Media Links */}
+                <div className="flex items-center justify-center space-x-4">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-2"
+                    onClick={() => window.open('https://prasadbhai.com/', '_blank')}
+                    title="Visit Website"
+                  >
+                    <Globe className="w-5 h-5 text-green-600" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-2"
+                    onClick={() => window.open('https://facebook.com/johnsah698', '_blank')}
+                    title="Facebook"
+                  >
+                    <Facebook className="w-5 h-5 text-blue-600" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-2"
+                    onClick={() => window.open('https://linkedin.com/in/johnsah698', '_blank')}
+                    title="LinkedIn"
+                  >
+                    <Linkedin className="w-5 h-5 text-blue-700" />
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="p-2"
+                    onClick={() => window.open('https://github.com/johnsah698', '_blank')}
+                    title="GitHub"
+                  >
+                    <Github className="w-5 h-5 text-gray-700" />
+                  </Button>
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-4">
+                  Built with ❤️ by Prasad Bhai
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Danger Zone */}
           <Card className="border-destructive">
             <CardHeader>
@@ -347,7 +518,8 @@ const Settings = () => {
                   <p className="font-medium">Clear All Data</p>
                   <p className="text-sm text-muted-foreground">Remove all locally stored content and settings</p>
                 </div>
-                <Button variant="destructive" size="sm">
+                <Button variant="destructive" size="sm" onClick={handleClearAllData}>
+                  <Trash2 className="w-4 h-4 mr-2" />
                   Clear Data
                 </Button>
               </div>
