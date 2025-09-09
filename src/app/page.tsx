@@ -45,7 +45,7 @@ const HomeContent = () => {
 
   // Clean URL by removing NextAuth callback parameters
   useEffect(() => {
-    if (status === "unauthenticated" && searchParams && searchParams.toString()) {
+    if (searchParams && searchParams.toString()) {
       // Check if there are any NextAuth-related parameters
       const hasCallbackUrl = searchParams.has('callbackUrl');
       const hasError = searchParams.has('error');
@@ -56,7 +56,7 @@ const HomeContent = () => {
         router.replace('/', { scroll: false });
       }
     }
-  }, [status, searchParams, router]);
+  }, [searchParams, router]);
 
   // Typing animation effect
   useEffect(() => {
