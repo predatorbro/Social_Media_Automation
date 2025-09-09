@@ -134,18 +134,21 @@ const ImageStudio = () => {
   const openImageCarousel = (index: number) => {
     setCurrentImageIndex(index);
     setCarouselOpen(true);
-    // Set the carousel to the correct slide after it's opened
-    setTimeout(() => {
-      carouselApi?.scrollTo(index);
-    }, 100);
   };
 
   // Update current image index when carousel changes
   useEffect(() => {
-    if (!carouselApi) return;
+    if (!carouselApi) {
+      console.log('Carousel API not available');
+      return;
+    }
+
+    console.log('Carousel API available:', carouselApi);
 
     const onSelect = () => {
-      setCurrentImageIndex(carouselApi.selectedScrollSnap());
+      const newIndex = carouselApi.selectedScrollSnap();
+      console.log('Carousel selected index:', newIndex);
+      setCurrentImageIndex(newIndex);
     };
 
     carouselApi.on('select', onSelect);
@@ -153,6 +156,16 @@ const ImageStudio = () => {
       carouselApi.off('select', onSelect);
     };
   }, [carouselApi]);
+
+  // Initialize carousel when modal opens
+  useEffect(() => {
+    if (carouselOpen && carouselApi && generatedImages.length > 0) {
+      // Small delay to ensure carousel is fully rendered
+      setTimeout(() => {
+        carouselApi.scrollTo(currentImageIndex);
+      }, 100);
+    }
+  }, [carouselOpen, carouselApi, generatedImages.length, currentImageIndex]);
 
   // Keyboard navigation for carousel
   useEffect(() => {
@@ -375,7 +388,7 @@ const ImageStudio = () => {
                           src={imageUrl}
                           alt={`Generated image ${index + 1}`}
                           fill
-                          className="object-cover"
+                          className=""
                           unoptimized
                         />
                       </div>
@@ -427,28 +440,33 @@ const ImageStudio = () => {
             <div className="flex-1 flex items-center justify-center p-4">
               <Carousel
                 setApi={setCarouselApi}
-                className="w-full max-w-4xl"
+                className="w-full max-w-4xl h-full"
                 opts={{
                   loop: true,
-                  dragFree: true,
                   align: 'center',
-                  skipSnaps: false,
-                  containScroll: 'trimSnaps',
                 }}
               >
                 <CarouselContent>
                   {generatedImages.map((imageUrl, index) => (
-                    <CarouselItem key={index} className="flex items-center justify-center">
-                      <div className="relative max-w-full max-h-full">
-                        <div className="relative w-full h-[70vh] rounded-lg overflow-hidden">
-                          <Image
-                            src={imageUrl}
-                            alt={`Generated image ${index + 1}`}
-                            fill
-                            className="object-contain"
-                            unoptimized
-                          />
-                        </div>
+                    <CarouselItem
+                      key={index}
+                      className="flex items-center justify-center"
+                    >
+                      <div className="relative w-full h-[80vh] rounded-lg overflow-hidden">
+                        <Image
+                          src={imageUrl}
+                          alt={`Generated image ${index + 1}`}
+                          fill
+                          className="object-contain cursor-grab"
+                          unoptimized
+                          onError={(e) => {
+                            console.error("Image failed to load:", imageUrl);
+                            e.currentTarget.style.display = "none";
+                          }}
+                          onLoad={() => {
+                            console.log("Image loaded successfully:", imageUrl);
+                          }}
+                        />
                         {/* Image counter */}
                         <div className="absolute top-4 left-4 bg-black/70 text-white px-3 py-1 rounded-full text-sm">
                           {index + 1} / {generatedImages.length}
@@ -457,6 +475,7 @@ const ImageStudio = () => {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
+
                 <CarouselPrevious className="left-4 bg-black/50 hover:bg-black/70 border-white/20 text-white" />
                 <CarouselNext className="right-4 bg-black/50 hover:bg-black/70 border-white/20 text-white" />
               </Carousel>
@@ -464,14 +483,14 @@ const ImageStudio = () => {
 
             {/* Thumbnail Navigation */}
             <div className="p-4 bg-black/80">
-              <div className="flex justify-center gap-2 max-w-4xl mx-auto overflow-x-auto">
+              <div className="flex justify-center gap-2 max-w-4xl mx-auto ">
                 {generatedImages.map((imageUrl, index) => (
                   <button
                     key={index}
                     onClick={() => carouselApi?.scrollTo(index)}
                     className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-all ${currentImageIndex === index
-                        ? 'border-white scale-110'
-                        : 'border-white/30 hover:border-white/60'
+                      ? 'border-white scale-110'
+                      : 'border-white/30 hover:border-white/60'
                       }`}
                   >
                     <div className="relative w-full h-full">
@@ -489,7 +508,7 @@ const ImageStudio = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="absolute top-4 right-4 flex gap-2">
+            <div className="absolute bottom-4 right-4 flex gap-2">
               <Button
                 size="sm"
                 variant="secondary"
@@ -523,6 +542,7 @@ const ImageStudio = () => {
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 };
