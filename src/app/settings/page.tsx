@@ -20,7 +20,9 @@ import {
   Facebook,
   Linkedin,
   Github,
-  Globe
+  Globe,
+  CheckCircle,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -73,6 +75,7 @@ const Settings = () => {
   });
 
   const { toast } = useToast();
+  const [profileButtonState, setProfileButtonState] = useState<'idle' | 'loading' | 'success'>('idle');
 
   // Load all settings data on component mount
   useEffect(() => {
@@ -91,13 +94,28 @@ const Settings = () => {
   }, [currentTheme]);
 
   const handleProfileUpdate = () => {
-    // Save to localStorage
-    saveUserProfile(settings.profile);
+    // Set loading state
+    setProfileButtonState('loading');
 
-    toast({
-      title: "Profile Updated",
-      description: "Your profile settings have been saved successfully."
-    });
+    // Simulate saving delay (1 second)
+    setTimeout(() => {
+      // Save to localStorage
+      saveUserProfile(settings.profile);
+
+      // Set success state
+      setProfileButtonState('success');
+
+      // Show toast
+      toast({
+        title: "Profile Updated",
+        description: "Your profile settings have been saved successfully."
+      });
+
+      // Reset to idle state after 3 seconds
+      setTimeout(() => {
+        setProfileButtonState('idle');
+      }, 3000);
+    }, 1000);
   };
 
   const handleNotificationToggle = (key: keyof NotificationSettings) => {
@@ -229,9 +247,25 @@ const Settings = () => {
                   }))}
                 />
               </div>
-              <Button onClick={handleProfileUpdate} className="flex items-center space-x-2">
-                <Save className="w-4 h-4" />
-                <span>Update Profile</span>
+              <Button
+                onClick={handleProfileUpdate}
+                disabled={profileButtonState === 'loading'}
+                className="flex items-center space-x-2"
+              >
+                {profileButtonState === 'loading' && (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                )}
+                {profileButtonState === 'success' && (
+                  <CheckCircle className="w-4 h-4 text-green-600" />
+                )}
+                {profileButtonState === 'idle' && (
+                  <Save className="w-4 h-4" />
+                )}
+                <span>
+                  {profileButtonState === 'loading' && 'Saving...'}
+                  {profileButtonState === 'success' && 'Saved'}
+                  {profileButtonState === 'idle' && 'Update Profile'}
+                </span>
               </Button>
             </CardContent>
           </Card>

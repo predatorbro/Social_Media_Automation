@@ -1,4 +1,4 @@
-import { Instagram, Twitter, Linkedin, Facebook, User, Heart, MessageCircle, Share, MoreHorizontal, ThumbsUp } from "lucide-react";
+import { User, Heart, MessageCircle, Share, MoreHorizontal, ThumbsUp } from "lucide-react";
 
 interface PlatformPreviewProps {
   content: string;
@@ -9,13 +9,6 @@ interface PlatformPreviewProps {
 }
 
 const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName }: PlatformPreviewProps) => {
-  const platforms = [
-    { id: "instagram", name: "Instagram", icon: Instagram, color: "instagram" },
-    { id: "twitter", name: "Twitter/X", icon: Twitter, color: "twitter" },
-    { id: "linkedin", name: "LinkedIn", icon: Linkedin, color: "linkedin" },
-    { id: "facebook", name: "Facebook", icon: Facebook, color: "facebook" },
-  ];
-
   const renderInstagramPreview = () => (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden">
       {/* Header */}

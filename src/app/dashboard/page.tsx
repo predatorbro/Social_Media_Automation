@@ -107,7 +107,7 @@ const Dashboard = () => {
   // Get recent content (last 5 items, sorted by updatedAt)
   const recentContent = contentItems
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 5)
+    .slice(0, 6)
     .map(item => ({
       id: item.id,
       title: item.title || 'Untitled',
@@ -137,7 +137,7 @@ const Dashboard = () => {
         const itemDate = new Date(item.createdAt);
         const now = new Date();
         return itemDate.getMonth() === now.getMonth() &&
-               itemDate.getFullYear() === now.getFullYear();
+          itemDate.getFullYear() === now.getFullYear();
       }).length.toString(),
       change: "This month",
       icon: Calendar,
@@ -273,9 +273,9 @@ const Dashboard = () => {
                       Create your first piece of content to get started
                     </p>
                     <Link href="/create">
-                      <Button>
+                      <Button className="bg-primary-gradient">
                         <PlusCircle className="w-4 h-4 mr-2" />
-                        Create Content
+                        Let's Create
                       </Button>
                     </Link>
                   </div>
@@ -327,15 +327,13 @@ const Dashboard = () => {
                     return (
                       <div key={platform.name} className="flex items-center justify-between">
                         <div className="flex items-center space-x-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            platform.connected ? 'bg-success/10' : 'bg-muted'
-                          }`}>
-                            <Icon className={`w-4 h-4 ${
-                              platform.color === 'instagram' ? 'text-instagram' :
-                              platform.color === 'twitter' ? 'text-twitter' :
-                              platform.color === 'linkedin' ? 'text-linkedin' :
-                              platform.color === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
-                            }`} />
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${platform.connected ? 'bg-success/10' : 'bg-muted'
+                            }`}>
+                            <Icon className={`w-4 h-4 ${platform.color === 'instagram' ? 'text-instagram' :
+                                platform.color === 'twitter' ? 'text-twitter' :
+                                  platform.color === 'linkedin' ? 'text-linkedin' :
+                                    platform.color === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
+                              }`} />
                           </div>
                           <div>
                             <p className="font-medium text-sm">{platform.name}</p>
@@ -344,9 +342,8 @@ const Dashboard = () => {
                             </p>
                           </div>
                         </div>
-                        <div className={`w-2 h-2 rounded-full ${
-                          platform.connected ? 'bg-success' : 'bg-muted-foreground'
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${platform.connected ? 'bg-success' : 'bg-muted-foreground'
+                          }`} />
                       </div>
                     );
                   })}
@@ -391,7 +388,7 @@ const Dashboard = () => {
                     Browse Library
                   </Button>
                 </Link>
-                
+
               </CardContent>
             </Card>
           </div>
@@ -406,10 +403,10 @@ const Dashboard = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-lg mb-2">Pro Tip</h3>
-<p className="text-white/90 mb-4">
-  Connect to Supabase to unlock AI'powered content generation, user's authentication,
-  and data persistence for the full SocialFlow experience.
-</p>
+                <p className="text-white/90 mb-4">
+                  Connect to Supabase to unlock AI'powered content generation, user's authentication,
+                  and data persistence for the full SocialFlow experience.
+                </p>
                 <Button variant="secondary" size="sm">
                   Learn More
                 </Button>

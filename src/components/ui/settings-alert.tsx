@@ -2,12 +2,32 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { X, Settings, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button"; 
+import { Button } from "@/components/ui/button";
+import { getUserProfile } from "@/utils/storage";
 
 const SettingsAlert = () => {
-  const [showAlert, setShowAlert] = useState(true);
+  const [showAlert, setShowAlert] = useState(false);
 
-  const handleDismiss = () => { 
+  useEffect(() => {
+    // Check if profile is properly filled
+    const profile = getUserProfile();
+
+    // Show alert if any required field is empty or default
+    const isProfileIncomplete =
+      !profile.name ||
+      profile.name.trim() === "" ||
+      profile.name === "Your Name" ||
+      !profile.email ||
+      profile.email.trim() === "" ||
+      profile.email === "your.email@example.com" ||
+      !profile.page ||
+      profile.page.trim() === "" ||
+      profile.page === "Your Company";
+
+    setShowAlert(isProfileIncomplete);
+  }, []);
+
+  const handleDismiss = () => {
     setShowAlert(false);
   };
 
