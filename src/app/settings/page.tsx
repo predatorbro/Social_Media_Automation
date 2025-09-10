@@ -36,6 +36,7 @@ import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
+import { getUserSettings, saveUserSettings, UserSettings } from "@/app/actions/settings";
 import {
   saveUserProfile,
   getUserProfile,
@@ -48,7 +49,7 @@ import {
 } from "@/utils/storage";
 
 const Settings = () => {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const { theme: currentTheme, setTheme } = useTheme();
   const [settings, setSettings] = useState<{
     profile: { name: string; email: string; page: string };
@@ -79,28 +80,60 @@ const Settings = () => {
 
   // Load all settings data on component mount
   useEffect(() => {
-    const profile = getUserProfile();
-    const notifications = getNotificationSettings();
-    const preferences = getPreferencesSettings();
-
-    setSettings({
-      profile,
-      notifications,
-      preferences: {
-        ...preferences,
-        theme: currentTheme // Sync with theme provider
+    const loadSettings = async () => {
+      if (session?.user?.email) {
+        const dbSettings = await getUserSettings(session.user.email);
+        if (dbSettings) {
+          setSettings(dbSettings);
+          // Save to local storage as cache
+          saveUserProfile(dbSettings.profile);
+          saveNotificationSettings(dbSettings.notifications);
+          savePreferencesSettings(dbSettings.preferences);
+        } else {
+          // Fallback to local storage
+          const profile = getUserProfile();
+          const notifications = getNotificationSettings();
+          const preferences = getPreferencesSettings();
+          setSettings({
+            profile,
+            notifications,
+            preferences: {
+              ...preferences,
+              theme: currentTheme
+            }
+          });
+        }
+      } else {
+        // Not logged in, use local storage
+        const profile = getUserProfile();
+        const notifications = getNotificationSettings();
+        const preferences = getPreferencesSettings();
+        setSettings({
+          profile,
+          notifications,
+          preferences: {
+            ...preferences,
+            theme: currentTheme
+          }
+        });
       }
-    });
-  }, [currentTheme]);
+    };
+    loadSettings();
+  }, [session, currentTheme]);
 
   const handleProfileUpdate = () => {
     // Set loading state
     setProfileButtonState('loading');
 
     // Simulate saving delay (1 second)
-    setTimeout(() => {
+    setTimeout(async () => {
       // Save to localStorage
       saveUserProfile(settings.profile);
+
+      // Save to DB if logged in
+      if (session?.user?.email) {
+        await saveUserSettings(session.user.email, settings);
+      }
 
       // Set success state
       setProfileButtonState('success');
@@ -128,6 +161,9 @@ const Settings = () => {
       notifications: newSettings
     }));
     saveNotificationSettings(newSettings);
+    if (session?.user?.email) {
+      saveUserSettings(session.user.email, { ...settings, notifications: newSettings });
+    }
   };
 
   const handlePreferenceToggle = (key: keyof Omit<PreferencesSettings, 'theme' | 'defaultPlatforms'>) => {
@@ -140,6 +176,9 @@ const Settings = () => {
       preferences: newSettings
     }));
     savePreferencesSettings(newSettings);
+    if (session?.user?.email) {
+      saveUserSettings(session.user.email, { ...settings, preferences: newSettings });
+    }
   };
 
   const handleThemeChange = (theme: 'light' | 'dark' | 'system') => {
@@ -155,6 +194,9 @@ const Settings = () => {
       preferences: newSettings
     }));
     savePreferencesSettings(newSettings);
+    if (session?.user?.email) {
+      saveUserSettings(session.user.email, { ...settings, preferences: newSettings });
+    }
   };
 
   const handleClearAllData = () => {
@@ -404,7 +446,7 @@ const Settings = () => {
                 <Database className="w-5 h-5 text-primary" />
                 <div>
                   <p className="font-medium">Data Storage</p>
-                  <p className="text-sm text-muted-foreground">Your data is stored locally in your browser</p>
+                  <p className="text-sm text-muted-foreground">Your data is stored in the database and cached locally in your browser for faster access</p>
                 </div>
               </div>
 

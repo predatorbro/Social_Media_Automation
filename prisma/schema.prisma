@@ -1,0 +1,42 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("PRISMA_DATABASE_URL")
+  directUrl = env("PRISMA_DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  page      String?
+  emailUpdates Boolean @default(true)
+  contentReminders Boolean @default(true)
+  scheduleAlerts Boolean @default(false)
+  weeklyReports Boolean @default(true)
+  theme String @default("system")
+  defaultPlatforms String[] @default(["instagram", "twitter"])
+  autoSave Boolean @default(true)
+  contentTemplates Boolean @default(true)
+  platforms Json @default("[]")
+  calendar Json @default("[]")
+  createdAt DateTime @default(now())
+}
+
+model Content {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  content   Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

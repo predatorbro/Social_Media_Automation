@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { saveContent as saveContentToDB } from "@/app/actions/content";
+import axios from "axios";
 import {
   Sparkles,
   Instagram,
@@ -9,12 +11,11 @@ import {
   Linkedin,
   Facebook,
   Wand2,
-  Copy,
-  Download,
+  Copy, 
   Save,
-  Calendar as CalendarIcon,
-  Clock,
-  RotateCcw
+  Calendar as CalendarIcon, 
+  RotateCcw,
+  CircleCheckBig
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ import {
 } from "@/utils/storage";
 
 const CreateContent = () => {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [originalContent, setOriginalContent] = useState("");
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(["instagram"]);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -53,7 +54,7 @@ const CreateContent = () => {
   const [selectedContentForSchedule, setSelectedContentForSchedule] = useState("");
   const [currentContentId, setCurrentContentId] = useState<string>("");
   const [currentViewingPlatform, setCurrentViewingPlatform] = useState<string>("");
-  const [wordCount, setWordCount] = useState([150]);
+  const [wordCount, setWordCount] = useState([12]);
   const [isStrictMode, setIsStrictMode] = useState<boolean>(false);
   const { toast } = useToast();
 
@@ -70,6 +71,31 @@ const CreateContent = () => {
     if (savedState.generatedContent) setGeneratedContent(savedState.generatedContent || {});
     if (savedState.currentViewingPlatform) setCurrentViewingPlatform(savedState.currentViewingPlatform || "");
     if (savedState.currentContentId) setCurrentContentId(savedState.currentContentId || "");
+
+    // Also try to load generated content from the separate key
+    const generatedContentData = localStorage.getItem('create-page-generated-content');
+    if (generatedContentData) {
+      try {
+        const parsed = JSON.parse(generatedContentData);
+        if (parsed.generatedContent) {
+          setGeneratedContent(parsed.generatedContent);
+        }
+        if (parsed.currentViewingPlatform) {
+          setCurrentViewingPlatform(parsed.currentViewingPlatform);
+        }
+        if (parsed.currentContentId) {
+          setCurrentContentId(parsed.currentContentId);
+        }
+        if (parsed.originalPrompt) {
+          setOriginalContent(parsed.originalPrompt);
+        }
+        if (parsed.selectedPlatforms) {
+          setSelectedPlatforms(parsed.selectedPlatforms);
+        }
+      } catch (error) {
+        console.error('Error loading generated content from localStorage:', error);
+      }
+    }
   }, []);
 
   // Save state whenever it changes
@@ -150,46 +176,73 @@ const CreateContent = () => {
 
     setIsGenerating(true);
 
-    // Simulate AI content generation (in real app, this would call Supabase edge function)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const generatedContent: Record<string, { content: string; hashtags: string[]; characterCount: number }> = {};
 
-    const mockGeneratedContent: Record<string, { content: string; hashtags: string[]; characterCount: number }> = {};
+    const promises = selectedPlatforms.map(async (platform) => {
+      const prompt = `Generate engaging social media content for ${platform} based on this idea: "${originalContent}".
+            Target word count: approximately ${wordCount[0]} words.
+            Make it suitable for ${platform} audience.
 
-    selectedPlatforms.forEach(platform => {
-      // Mock content generation based on platform
-      let content = originalContent;
-      let hashtags: string[] = [];
+            CRITICAL INSTRUCTIONS - FOLLOW EXACTLY:
+            - Respond with ONLY the main content text
+            - NO explanations, NO introductions, NO additional text
+            - NO markdown formatting (*bold*, **italic**, etc.)
+            - NO separate lines for hashtags
+            - Put ALL hashtags at the very END of the content on the SAME line
+            - Example format: "Main content here #hashtag1 #hashtag2 #hashtag3"
+            - Keep response clean and ready to post directly`;
 
-      switch (platform) {
-        case "instagram":
-          content = `✨ ${originalContent}\n\nWhat do you think? Let me know in the comments! 👇`;
-          hashtags = ["content", "creator", "socialmedia", "inspiration", "community"];
-          break;
-        case "twitter":
-          content = originalContent.length > 250 ?
-            `${originalContent.substring(0, 250)}...` :
-            `${originalContent}\n\n#Thread 🧵`;
-          hashtags = ["twitter", "content", "creator"];
-          break;
-        case "linkedin":
-          content = `${originalContent}\n\nWhat's your experience with this? I'd love to hear your thoughts in the comments.\n\n#ProfessionalGrowth #Leadership`;
-          hashtags = ["professional", "leadership", "growth", "networking"];
-          break;
-        case "facebook":
-          content = `${originalContent}\n\nTag someone who needs to see this! 👥`;
-          hashtags = ["community", "facebook", "social"];
-          break;
+      try {
+        const res = await axios.post('/api/gemini', { prompt });
+        let fullContent = res.data.text;
+
+        // Remove markdown formatting
+        fullContent = fullContent
+          .replace(/\*\*(.*?)\*\*/g, '$1') // Remove **bold**
+          .replace(/\*(.*?)\*/g, '$1')     // Remove *italic*
+          .replace(/__(.*?)__/g, '$1')     // Remove __underline__
+          .replace(/~~(.*?)~~/g, '$1')     // Remove ~~strikethrough~~
+          .replace(/`(.*?)`/g, '$1')       // Remove `code`
+          .replace(/```[\s\S]*?```/g, '')  // Remove code blocks
+          .replace(/^\s*[-*+]\s+/gm, '')   // Remove list markers
+          .replace(/^\s*\d+\.\s+/gm, '')   // Remove numbered list markers
+          .trim();
+
+        // Extract hashtags from the response (more robust pattern)
+        const hashtagMatches = fullContent.match(/#\w+/g) || [];
+        // Remove hashtags and any trailing/leading whitespace, also remove extra spaces
+        let contentWithoutHashtags = fullContent
+          .replace(/#\w+/g, '') // Remove hashtags
+          .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+          .trim(); // Remove leading/trailing whitespace
+
+        // Additional cleanup for common AI artifacts
+        contentWithoutHashtags = contentWithoutHashtags
+          .replace(/\n\s*\n/g, '\n') // Remove extra blank lines
+          .replace(/^\s*#.*$/gm, '') // Remove any remaining hashtag lines
+          .trim();
+
+        const hashtags = hashtagMatches.map((h: string) => h.slice(1));
+
+        generatedContent[platform] = {
+          content: contentWithoutHashtags,
+          hashtags,
+          characterCount: fullContent.length
+        };
+      } catch (error) {
+        console.error(`Error generating content for ${platform}:`, error);
+        // Fallback content
+        generatedContent[platform] = {
+          content: `Error generating content for ${platform}. Please try again.`,
+          hashtags: [],
+          characterCount: 0
+        };
       }
-
-      mockGeneratedContent[platform] = {
-        content,
-        hashtags,
-        characterCount: content.length
-      };
     });
 
-    setGeneratedContent(mockGeneratedContent);
-    console.log(mockGeneratedContent)
+    await Promise.all(promises);
+
+    setGeneratedContent(generatedContent);
     setIsGenerating(false);
 
     // Set the first selected platform as the default viewing platform
@@ -204,15 +257,34 @@ const CreateContent = () => {
     const contentItem: SavedContent = {
       id: contentId,
       originalPrompt: originalContent,
-      generatedContent: mockGeneratedContent,
+      generatedContent,
       selectedPlatforms: selectedPlatforms,
       status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    // Save to localStorage using storage utility
+    // Save to localStorage using storage utility (this saves to content library)
     saveContent(contentItem);
+
+    // Also save to a separate key for create page persistence
+    const createPageContent = {
+      ...contentItem,
+      generatedContent,
+      currentViewingPlatform: selectedPlatforms[0] || '',
+      currentContentId: contentId
+    };
+    localStorage.setItem('create-page-generated-content', JSON.stringify(createPageContent));
+
+    // Save to database if user is logged in
+    if (session?.user?.email) {
+      try {
+        await saveContentToDB(session.user.email, contentItem);
+      } catch (error) {
+        console.error('Error saving to database:', error);
+        // Don't show error to user, content is still saved locally
+      }
+    }
 
     toast({
       title: "Content Generated! ✨",
@@ -369,13 +441,13 @@ const CreateContent = () => {
                       value={wordCount}
                       onValueChange={setWordCount}
                       max={500}
-                      min={50}
-                      step={25}
+                      min={0}
+                      step={1}
                       className="w-full"
                     />
 
                     <div className="flex justify-between text-xs text-gray-500">
-                      <span>50</span>
+                      <span>0</span>
                       <span>500</span>
                     </div>
                   </div>
@@ -416,7 +488,10 @@ const CreateContent = () => {
           {/* Platform Selection */}
           <Card className="w-full">
             <CardHeader>
-              <CardTitle>Select Platforms</CardTitle>
+              <CardTitle className="flex items-center space-x-2">
+                <CircleCheckBig className="w-5 h-5 text-primary" />
+                <span>Select Platform</span>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -481,49 +556,40 @@ const CreateContent = () => {
             )}
           </HeroButton>
 
-          {/* Note about Supabase */}
-          <Card className="bg-muted/50 w-full">
-            <CardContent className="p-6">
-              <p className="text-sm text-muted-foreground">
-                <strong>Note:</strong> For full AI content generation, connect to Supabase to enable Gemini API integration.
-                Currently showing mock content for demonstration.
-              </p>
-            </CardContent>
-          </Card>
 
           {/* Generated Content & Preview */}
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">Generated Content</h2>
+          <div className="space-y-4"> 
             {Object.keys(generatedContent).length > 0 && currentViewingPlatform ? (
               <Card className="w-full">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      {/* Platform Selection Buttons */}
-                      <div className="flex space-x-2">
-                        {selectedPlatforms.map(platformId => {
-                          const platform = platforms.find(p => p.id === platformId);
-                          if (!platform) return null;
+                    <div className="flex text-2xl items-center space-x-2">
+                      <Wand2 className="w-5 h-5 text-primary" />
+                      <span className="font-semibold">Generated Content</span>
+                    </div>
+                    <div className="flex space-x-2">
+                      {selectedPlatforms.map(platformId => {
+                        const platform = platforms.find(p => p.id === platformId);
+                        if (!platform) return null;
 
-                          const Icon = platform.icon;
-                          const isActive = currentViewingPlatform === platformId;
+                        const Icon = platform.icon;
+                        const isActive = currentViewingPlatform === platformId;
 
-                          return (
-                            <Button
-                              key={platformId}
-                              variant={isActive ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setCurrentViewingPlatform(platformId)}
-                              className="flex items-center space-x-2"
-                            >
-                              <Icon className={`w-4 h-4 ${platform.color === 'instagram' ? 'text-white' :
-                                platform.color === 'twitter' ? 'text-white' :
-                                  platform.color === 'linkedin' ? 'text-white' : 'text-white'}`} />
-                              <span className="hidden sm:inline">{platform.name}</span>
-                            </Button>
-                          );
-                        })}
-                      </div>
+                        return (
+                          <Button
+                            key={platformId}
+                            variant={isActive ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentViewingPlatform(platformId)}
+                            className="flex items-center space-x-2"
+                          >
+                            <Icon className={`w-4 h-4 ${platform.color === 'instagram' ? 'text-white' :
+                              platform.color === 'twitter' ? 'text-white' :
+                                platform.color === 'linkedin' ? 'text-white' : 'text-white'}`} />
+                            <span className="hidden sm:inline">{platform.name}</span>
+                          </Button>
+                        );
+                      })}
                     </div>
                   </CardTitle>
                 </CardHeader>

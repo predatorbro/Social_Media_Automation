@@ -26,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loading } from "@/components/ui/loading";
 import Navigation from "@/components/layout/Navigation";
 import { savePlatform, getStoredPlatforms, deletePlatform, PlatformProfile } from "@/utils/storage";
+import { getUserPlatforms, saveUserPlatforms } from "@/app/actions/platforms";
 
 const Profiles = () => {
   const { status } = useSession();
@@ -37,9 +38,44 @@ const Profiles = () => {
   });
   const [platforms, setPlatforms] = useState<PlatformProfile[]>([]);
 
+  const { data: session } = useSession();
+
   useEffect(() => {
-    setPlatforms(getStoredPlatforms());
-  }, []);
+    loadPlatforms();
+  }, [session]);
+
+  const loadPlatforms = async () => {
+    if (!session?.user?.email) {
+      // Fallback to localStorage only
+      setPlatforms(getStoredPlatforms());
+      return;
+    }
+
+    try {
+      const dbPlatforms = await getUserPlatforms(session.user.email);
+      console.log('Database platforms:', dbPlatforms);
+
+      if (dbPlatforms && Array.isArray(dbPlatforms) && dbPlatforms.length > 0) {
+        // Save to localStorage for immediate access
+        localStorage.setItem('platforms', JSON.stringify(dbPlatforms));
+        setPlatforms(dbPlatforms as unknown as PlatformProfile[]);
+      } else {
+        // Try to load from localStorage as fallback
+        const stored = getStoredPlatforms();
+        if (stored.length > 0) {
+          setPlatforms(stored);
+          // Sync localStorage to database
+          await saveUserPlatforms(session.user.email, stored);
+        } else {
+          setPlatforms([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading platforms:', error);
+      // Fallback to localStorage
+      setPlatforms(getStoredPlatforms());
+    }
+  };
 
   const platformOptions = [
     { id: "instagram", name: "Instagram", icon: Instagram, color: "instagram" },
@@ -58,7 +94,7 @@ const Profiles = () => {
     return platformData?.color || "muted";
   };
 
-  const handleAddProfile = () => {
+  const handleAddProfile = async () => {
     if (newProfile.platform && newProfile.profileUrl) {
       const platform: PlatformProfile = {
         id: Date.now().toString(),
@@ -66,8 +102,21 @@ const Profiles = () => {
         profileUrl: newProfile.profileUrl,
         createdAt: new Date().toISOString()
       };
+
+      // Save to localStorage
       savePlatform(platform);
-      setPlatforms([...platforms, platform]);
+      const updatedPlatforms = [...platforms, platform];
+      setPlatforms(updatedPlatforms);
+
+      // Save to database if user is logged in
+      if (session?.user?.email) {
+        try {
+          await saveUserPlatforms(session.user.email, updatedPlatforms);
+        } catch (error) {
+          console.error('Error saving platforms to database:', error);
+        }
+      }
+
       setIsAddDialogOpen(false);
       setNewProfile({ platform: "", profileUrl: "" });
     }
@@ -82,7 +131,7 @@ const Profiles = () => {
     setIsAddDialogOpen(true);
   };
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (newProfile.platform && newProfile.profileUrl) {
       if (editingProfile) {
         // Update existing profile
@@ -92,7 +141,17 @@ const Profiles = () => {
           profileUrl: newProfile.profileUrl
         };
         savePlatform(updatedProfile);
-        setPlatforms(platforms.map(p => p.id === editingProfile.id ? updatedProfile : p));
+        const updatedPlatforms = platforms.map(p => p.id === editingProfile.id ? updatedProfile : p);
+        setPlatforms(updatedPlatforms);
+
+        // Save to database if user is logged in
+        if (session?.user?.email) {
+          try {
+            await saveUserPlatforms(session.user.email, updatedPlatforms);
+          } catch (error) {
+            console.error('Error saving platforms to database:', error);
+          }
+        }
       } else {
         // Add new profile
         const platform: PlatformProfile = {
@@ -102,7 +161,17 @@ const Profiles = () => {
           createdAt: new Date().toISOString()
         };
         savePlatform(platform);
-        setPlatforms([...platforms, platform]);
+        const updatedPlatforms = [...platforms, platform];
+        setPlatforms(updatedPlatforms);
+
+        // Save to database if user is logged in
+        if (session?.user?.email) {
+          try {
+            await saveUserPlatforms(session.user.email, updatedPlatforms);
+          } catch (error) {
+            console.error('Error saving platforms to database:', error);
+          }
+        }
       }
       setIsAddDialogOpen(false);
       setNewProfile({ platform: "", profileUrl: "" });
@@ -110,9 +179,20 @@ const Profiles = () => {
     }
   };
 
-  const handleDeleteProfile = (id: string) => {
+  const handleDeleteProfile = async (id: string) => {
+    // Delete from localStorage
     deletePlatform(id);
-    setPlatforms(platforms.filter(p => p.id !== id));
+    const updatedPlatforms = platforms.filter(p => p.id !== id);
+    setPlatforms(updatedPlatforms);
+
+    // Delete from database if user is logged in
+    if (session?.user?.email) {
+      try {
+        await saveUserPlatforms(session.user.email, updatedPlatforms);
+      } catch (error) {
+        console.error('Error saving platforms to database:', error);
+      }
+    }
   };
 
   const handleDialogClose = (open: boolean) => {

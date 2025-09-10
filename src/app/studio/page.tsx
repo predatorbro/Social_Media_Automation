@@ -388,7 +388,7 @@ const ImageStudio = () => {
                           src={imageUrl}
                           alt={`Generated image ${index + 1}`}
                           fill
-                          className=""
+                          className="object-contain"
                           unoptimized
                         />
                       </div>

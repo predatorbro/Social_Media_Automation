@@ -62,7 +62,7 @@ const Navigation = () => {
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center space-x-8">
+          <div className="hidden xl:flex items-center space-x-8">
             {session && navigation.map((item) => (
               <Link
                 key={item.name}
@@ -79,7 +79,7 @@ const Navigation = () => {
           </div>
 
           {/* Medium Screen Navigation */}
-          <div className="hidden md:flex lg:hidden items-center space-x-4">
+          <div className="hidden md:flex xl:hidden items-center space-x-4">
             {session && navigation.map((item) => (
               <Link
                 key={item.name}

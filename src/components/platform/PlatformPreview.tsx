@@ -9,6 +9,11 @@ interface PlatformPreviewProps {
 }
 
 const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName }: PlatformPreviewProps) => {
+  // Truncate content for preview
+  const truncateContent = (text: string, maxLength: number = 150) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
+  };
   const renderInstagramPreview = () => (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden">
       {/* Header */}
@@ -53,7 +58,7 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
         <div className="mb-2">
           <p className="text-sm text-gray-900 dark:text-white">
             <span className="font-semibold">{pageName || "your_brand"}</span>{" "}
-            <span className="text-gray-700 dark:text-gray-300">{content}</span>
+            <span className="text-gray-700 dark:text-gray-300">{truncateContent(content)}</span>
           </p>
         </div>
 
@@ -105,7 +110,7 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
             </div>
 
             <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-3">
-              {content}
+              {truncateContent(content)}
             </div>
 
             {hashtags.length > 0 && (
@@ -179,7 +184,7 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
       {/* Post Content */}
       <div className="p-4">
         <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-4">
-          {content}
+          {truncateContent(content)}
         </div>
 
         {hashtags.length > 0 && (
@@ -252,7 +257,7 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
       {/* Post Content */}
       <div className="p-4">
         <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-4">
-          {content}
+          {truncateContent(content)}
         </div>
 
         {hashtags.length > 0 && (

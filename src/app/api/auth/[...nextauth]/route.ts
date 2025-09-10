@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import GoogleProvider from "next-auth/providers/google"
+import { saveSignIn } from "@/app/actions/auth"
 
 declare module "next-auth" {
   interface Session {
@@ -24,6 +25,15 @@ const handler = NextAuth({
     signIn: "/", // Redirect to home page for sign in
   },
   callbacks: {
+    async signIn({ user }) {
+      try {
+        await saveSignIn(user.email!, user.name!);
+        return true;
+      } catch (error) {
+        console.error("Error in custom signIn:", error);
+        return false;
+      }
+    },
     async jwt({ token, account }) {
       if (account) {
         token.accessToken = account.access_token

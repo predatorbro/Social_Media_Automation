@@ -37,6 +37,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { useSession } from 'next-auth/react';
+import { getUserContent, updateContent, deleteContent, deleteContentItem } from '@/app/actions/content';
 
 interface ContentItem {
   id: string;
@@ -60,28 +62,74 @@ interface ContentItem {
 const STORAGE_KEY = 'content-library';
 
 const ContentManager = () => {
+  const { data: session } = useSession();
   const [contentItems, setContentItems] = useState<ContentItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadContent();
-  }, []);
+    if (session?.user?.email) {
+      loadContent();
+    } else {
+      setLoading(false);
+    }
+  }, [session]);
 
-  const loadContent = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        const parsedContent = JSON.parse(stored);
-        setContentItems(parsedContent);
-      } catch (error) {
-        console.error('Error loading content:', error);
+  const loadContent = async () => {
+    if (!session?.user?.email) return;
+
+    try {
+      const content = await getUserContent(session.user.email);
+      console.log('Database content type:', typeof content, 'Value:', content);
+
+      if (content) {
+        // Ensure content is an array for localStorage compatibility
+        let contentArray: ContentItem[] = [];
+
+        if (Array.isArray(content)) {
+          contentArray = content as unknown as ContentItem[];
+        } else if (typeof content === 'object' && content !== null) {
+          // If it's a single object, wrap it in an array
+          contentArray = [content as unknown as ContentItem];
+        }
+
+        // Store as array in localStorage
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(contentArray));
+        setContentItems(contentArray);
+      } else {
+        // Try to load from localStorage as fallback
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsedContent = JSON.parse(stored);
+          // Ensure parsed content is an array
+          const contentArray = Array.isArray(parsedContent) ? parsedContent : [];
+          setContentItems(contentArray);
+        } else {
+          setContentItems([]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading content:', error);
+      // Fallback to localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsedContent = JSON.parse(stored);
+          // Ensure parsed content is an array
+          const contentArray = Array.isArray(parsedContent) ? parsedContent : [];
+          setContentItems(contentArray);
+        } catch (parseError) {
+          console.error('Error parsing stored content:', parseError);
+          setContentItems([]);
+        }
+      } else {
         setContentItems([]);
       }
-    } else {
-      setContentItems([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,10 +148,34 @@ const ContentManager = () => {
     toast.success(`Content ${status === 'published' ? 'published' : 'moved to drafts'}!`);
   };
 
-  const deleteContent = (contentId: string) => {
-    const filtered = contentItems.filter(item => item.id !== contentId);
-    saveContent(filtered);
-    toast.success('Content deleted successfully');
+  const deleteContentItem = async (contentId: string) => {
+    if (!session?.user?.email) {
+      // Fallback to localStorage only
+      const filtered = contentItems?.filter(item => item.id !== contentId);
+      saveContent(filtered);
+      toast.success('Content deleted successfully');
+      setDeleteDialogOpen(false);
+      setItemToDelete(null);
+      return;
+    }
+
+    try {
+      // Delete from database
+      await deleteContentItem(session.user.email, contentId);
+
+      // Update localStorage
+      const filtered = contentItems?.filter(item => item.id !== contentId);
+      saveContent(filtered);
+
+      toast.success('Content deleted successfully');
+    } catch (error) {
+      console.error('Error deleting content:', error);
+      // Fallback to localStorage only
+      const filtered = contentItems?.filter(item => item.id !== contentId);
+      saveContent(filtered);
+      toast.success('Content deleted from local library');
+    }
+
     setDeleteDialogOpen(false);
     setItemToDelete(null);
   };
@@ -112,7 +184,7 @@ const ContentManager = () => {
     const fullContent = Object.entries(content.generatedContent)
       .map(([platform, data]) => `${platform.toUpperCase()}:\n${data.content}\n${data.hashtags.map(h => `#${h}`).join(' ')}\n`)
       .join('\n');
-    
+
     navigator.clipboard.writeText(fullContent);
     toast.success('Content copied to clipboard!');
   };
@@ -354,7 +426,7 @@ const ContentManager = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => itemToDelete && deleteContent(itemToDelete)}
+              onClick={() => itemToDelete && deleteContentItem(itemToDelete)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

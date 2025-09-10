@@ -25,6 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import Navigation from "@/components/layout/Navigation";
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
+import { getUserCalendar, saveUserCalendar } from "@/app/actions/calendar";
 
 interface CalendarEvent {
   id: string;
@@ -37,6 +39,7 @@ interface CalendarEvent {
 }
 
 const Calendar = () => {
+  const { data: session } = useSession();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>('');
@@ -53,11 +56,66 @@ const Calendar = () => {
   });
 
   useEffect(() => {
-    const storedEvents = localStorage.getItem('calendar-events');
-    if (storedEvents) {
-      setEvents(JSON.parse(storedEvents));
+    loadCalendarEvents();
+  }, [session]);
+
+  const loadCalendarEvents = async () => {
+    if (!session?.user?.email) {
+      // Fallback to localStorage only
+      const storedEvents = localStorage.getItem('calendar-events');
+      if (storedEvents) {
+        setEvents(JSON.parse(storedEvents));
+      }
+      return;
     }
-  }, []);
+
+    try {
+      const dbEvents = await getUserCalendar(session.user.email);
+      console.log('Database calendar events loaded:', dbEvents);
+
+      if (dbEvents && Array.isArray(dbEvents) && dbEvents.length > 0) {
+        // Save to localStorage for immediate access
+        localStorage.setItem('calendar-events', JSON.stringify(dbEvents));
+        setEvents(dbEvents as unknown as CalendarEvent[]);
+        console.log('Calendar events loaded from database successfully');
+      } else {
+        // Try to load from localStorage as fallback
+        const storedEvents = localStorage.getItem('calendar-events');
+        if (storedEvents) {
+          const parsedEvents = JSON.parse(storedEvents);
+          setEvents(parsedEvents);
+          console.log('Calendar events loaded from localStorage');
+          // Sync localStorage to database
+          try {
+            await saveUserCalendar(session.user.email, parsedEvents);
+            console.log('LocalStorage events synced to database');
+          } catch (syncError) {
+            console.error('Error syncing localStorage to database:', syncError);
+          }
+        } else {
+          setEvents([]);
+          console.log('No calendar events found');
+        }
+      }
+    } catch (error: any) {
+      console.error('Error loading calendar events from database:', error);
+
+      // Check if it's a prepared statement error
+      if (error?.message?.includes('prepared statement') || error?.code === 'P2028') {
+        console.log('Prepared statement error detected - using localStorage fallback');
+        toast.error('Database connection issue, using local data');
+      } else {
+        toast.error('Failed to load calendar from database, using local data');
+      }
+
+      // Fallback to localStorage
+      const storedEvents = localStorage.getItem('calendar-events');
+      if (storedEvents) {
+        setEvents(JSON.parse(storedEvents));
+        console.log('Fallback to localStorage successful');
+      }
+    }
+  };
 
   const saveEvents = (newEvents: CalendarEvent[]) => {
     setEvents(newEvents);
@@ -106,7 +164,7 @@ const Calendar = () => {
     setIsCreateDialogOpen(true);
   };
 
-  const handleCreateEvent = () => {
+  const handleCreateEvent = async () => {
     if (!formData.title || !selectedDate) {
       toast.error('Please fill in all required fields');
       return;
@@ -124,6 +182,17 @@ const Calendar = () => {
 
     const newEvents = [...events, newEvent];
     saveEvents(newEvents);
+
+    // Save to database if user is logged in
+    if (session?.user?.email) {
+      try {
+        await saveUserCalendar(session.user.email, newEvents);
+        console.log('Calendar saved to database successfully');
+      } catch (error) {
+        console.error('Error saving calendar to database:', error);
+        toast.error('Failed to save calendar to database');
+      }
+    }
 
     setFormData({
       title: '',
@@ -148,7 +217,7 @@ const Calendar = () => {
     setIsCreateDialogOpen(true);
   };
 
-  const handleUpdateEvent = () => {
+  const handleUpdateEvent = async () => {
     if (!editingEvent || !formData.title) {
       toast.error('Please fill in all required fields');
       return;
@@ -168,6 +237,17 @@ const Calendar = () => {
     );
     saveEvents(newEvents);
 
+    // Save to database if user is logged in
+    if (session?.user?.email) {
+      try {
+        await saveUserCalendar(session.user.email, newEvents);
+        console.log('Calendar updated in database successfully');
+      } catch (error) {
+        console.error('Error updating calendar in database:', error);
+        toast.error('Failed to update calendar in database');
+      }
+    }
+
     setFormData({
       title: '',
       content: '',
@@ -180,9 +260,21 @@ const Calendar = () => {
     toast.success('Event updated successfully!');
   };
 
-  const handleDeleteEvent = (eventId: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
     const newEvents = events.filter(event => event.id !== eventId);
     saveEvents(newEvents);
+
+    // Save to database if user is logged in
+    if (session?.user?.email) {
+      try {
+        await saveUserCalendar(session.user.email, newEvents);
+        console.log('Calendar event deleted from database successfully');
+      } catch (error) {
+        console.error('Error deleting calendar event from database:', error);
+        toast.error('Failed to delete calendar event from database');
+      }
+    }
+
     toast.success('Event deleted successfully!');
   };
 
@@ -445,8 +537,8 @@ const Calendar = () => {
             <Card className="bg-muted/50">
               <CardContent className="p-4">
                 <p className="text-sm text-muted-foreground">
-                  <strong>Note:</strong> Events are saved locally in your browser.
-                  Connect to Supabase for cloud sync and actual post scheduling.
+                  <strong>Note:</strong> Events are synced with your account and saved to the database.
+                  Your calendar data persists across devices when you're logged in.
                 </p>
               </CardContent>
             </Card>

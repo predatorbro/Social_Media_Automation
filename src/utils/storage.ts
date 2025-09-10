@@ -292,6 +292,7 @@ export const getCreatePageState = (): Partial<CreatePageState> => {
 
 export const clearCreatePageState = (): void => {
   localStorage.removeItem('create-page-state');
+  localStorage.removeItem('create-page-generated-content');
 };
  
 // Data export
