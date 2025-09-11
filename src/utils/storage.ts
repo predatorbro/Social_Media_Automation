@@ -295,6 +295,37 @@ export const clearCreatePageState = (): void => {
   localStorage.removeItem('create-page-generated-content');
 };
  
+// Shared Images Storage (for both Instagram and Facebook)
+export interface SharedImageData {
+  url: string;
+  public_id: string;
+}
+
+export const saveSharedImages = (images: SharedImageData[]): void => {
+  localStorage.setItem('shared-uploaded-images', JSON.stringify(images));
+};
+
+export const getSharedImages = (): SharedImageData[] => {
+  const stored = localStorage.getItem('shared-uploaded-images');
+  return stored ? JSON.parse(stored) : [];
+};
+
+export const clearSharedImages = (): void => {
+  localStorage.removeItem('shared-uploaded-images');
+};
+
+// Legacy functions for backward compatibility (redirect to shared)
+export interface InstagramImageData extends SharedImageData {}
+export interface FacebookImageData extends SharedImageData {}
+
+export const saveInstagramImages = saveSharedImages;
+export const getInstagramImages = getSharedImages;
+export const clearInstagramImages = clearSharedImages;
+
+export const saveFacebookImages = saveSharedImages;
+export const getFacebookImages = getSharedImages;
+export const clearFacebookImages = clearSharedImages;
+
 // Data export
 export const exportData = () => {
   const data = {
@@ -303,6 +334,7 @@ export const exportData = () => {
     calendarEvents: getCalendarEvents(),
     platforms: getStoredPlatforms(),
     userProfile: getUserProfile(),
+    instagramImages: getInstagramImages(),
     exportDate: new Date().toISOString()
   };
 

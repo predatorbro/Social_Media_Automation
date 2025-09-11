@@ -20,6 +20,7 @@ model User {
   email     String   @unique
   name      String?
   page      String?
+  credits   Int      @default(100)
   emailUpdates Boolean @default(true)
   contentReminders Boolean @default(true)
   scheduleAlerts Boolean @default(false)

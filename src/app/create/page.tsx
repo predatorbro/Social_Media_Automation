@@ -56,6 +56,8 @@ const CreateContent = () => {
   const [currentViewingPlatform, setCurrentViewingPlatform] = useState<string>("");
   const [wordCount, setWordCount] = useState([12]);
   const [isStrictMode, setIsStrictMode] = useState<boolean>(false);
+  const [isPosting, setIsPosting] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const { toast } = useToast();
 
   // Load saved state on component mount
@@ -309,6 +311,59 @@ const CreateContent = () => {
     });
   };
 
+  const handlePostNow = async (platformId: string, content: string, hashtags: string[]) => {
+    if (platformId !== 'facebook') {
+      toast({
+        title: "Platform Not Supported",
+        description: "Post Now is currently only available for Facebook. Use Schedule for other platforms.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!content.trim()) {
+      toast({
+        title: "No Content",
+        description: "Please generate content first before posting.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsPosting(true);
+
+    try {
+      const postData = {
+        platform: platformId,
+        content: content,
+        hashtags: hashtags,
+        scheduledTime: new Date().toISOString(),
+        pageId: getUserProfile().page || process.env.FACEBOOK_PAGE_ID,
+        images: uploadedImages // Include uploaded images
+      };
+
+      const response = await axios.post('/api/schedule-post', postData);
+
+      if (response.data.success) {
+        toast({
+          title: "Posted Successfully! 🎉",
+          description: `Your content has been posted to Facebook.`,
+        });
+      } else {
+        throw new Error(response.data.error || 'Failed to post');
+      }
+    } catch (error: any) {
+      console.error('Error posting to Facebook:', error);
+      toast({
+        title: "Posting Failed",
+        description: error.response?.data?.error || error.message || "Failed to post to Facebook. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPosting(false);
+    }
+  };
+
   const handleSchedulePost = (platformId: string, content: string) => {
     setSelectedPlatformForSchedule(platformId);
     setSelectedContentForSchedule(content);
@@ -441,13 +496,13 @@ const CreateContent = () => {
                       value={wordCount}
                       onValueChange={setWordCount}
                       max={500}
-                      min={0}
+                      min={5}
                       step={1}
                       className="w-full"
                     />
 
                     <div className="flex justify-between text-xs text-gray-500">
-                      <span>0</span>
+                      <span>5</span>
                       <span>500</span>
                     </div>
                   </div>
@@ -560,7 +615,7 @@ const CreateContent = () => {
           {/* Generated Content & Preview */}
           <div className="space-y-4"> 
             {Object.keys(generatedContent).length > 0 && currentViewingPlatform ? (
-              <Card className="w-full">
+              <Card className="w-full bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <div className="flex text-2xl items-center space-x-2">
@@ -644,6 +699,8 @@ const CreateContent = () => {
                               hashtags={content.hashtags}
                               pageName={getUserProfile().page}
                               ownerName={getUserProfile().name}
+                              uploadedImages={uploadedImages}
+                              onImageUpload={setUploadedImages}
                             />
                           </div>
 
@@ -660,16 +717,39 @@ const CreateContent = () => {
                               Copy
                             </Button>
                             <Button
-                              variant="outline"
+                              variant="default"
                               size="sm"
-                              onClick={() => handleSaveToLibrary(currentViewingPlatform)}
-                              className="flex-1 min-w-[120px]"
+                              onClick={() => handlePostNow(currentViewingPlatform, content.content, content.hashtags)}
+                              className={`flex-1 min-w-[120px] ${
+                                currentViewingPlatform === 'instagram'
+                                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600'
+                                  : currentViewingPlatform === 'facebook'
+                                  ? 'bg-blue-600 hover:bg-blue-700'
+                                  : currentViewingPlatform === 'linkedin'
+                                  ? 'bg-blue-500 hover:bg-blue-600'
+                                  : currentViewingPlatform === 'twitter'
+                                  ? 'bg-sky-500 hover:bg-sky-600'
+                                  : 'bg-blue-600 hover:bg-blue-700'
+                              }`}
+                              disabled={isPosting}
                             >
-                              <Save className="w-4 h-4 mr-2" />
-                              Save
+                              {isPosting ? (
+                                <>
+                                  <Wand2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Posting...
+                                </>
+                              ) : (
+                                <>
+                                  {currentViewingPlatform === 'instagram' && <Instagram className="w-4 h-4 mr-2" />}
+                                  {currentViewingPlatform === 'facebook' && <Facebook className="w-4 h-4 mr-2" />}
+                                  {currentViewingPlatform === 'linkedin' && <Linkedin className="w-4 h-4 mr-2" />}
+                                  {currentViewingPlatform === 'twitter' && <Twitter className="w-4 h-4 mr-2" />}
+                                  Post Now
+                                </>
+                              )}
                             </Button>
                             <Button
-                              variant="default"
+                              variant="outline"
                               size="sm"
                               onClick={() => handleSchedulePost(currentViewingPlatform, content.content + '\n\n' + content.hashtags.map((h: string) => `#${h}`).join(' '))}
                               className="flex-1 min-w-[120px]"
@@ -713,7 +793,7 @@ const CreateContent = () => {
 
           {/* Generate New From Scratch Section - Only show when there's content */}
           {Object.keys(generatedContent).length > 0 && (
-            <Card className="w-full mt-8 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-2 border-dashed border-primary/30">
+            <Card className="w-full mt-8 border-2 border-dashed border-primary/30">
               <CardContent className="p-8">
                 <div className="text-center space-y-4">
                   <div className="flex justify-center">
@@ -723,10 +803,10 @@ const CreateContent = () => {
                   </div>
                   <div className="space-y-2">
                     <h3 className="text-xl font-semibold text-foreground">
-                      Ready for Something New?
+                      Create Something New
                     </h3>
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      Start fresh with a clean slate. Clear all your current content, settings, and generated results to begin creating something completely new.
+                    <p className="text-muted-foreground max-w-sm text-wrap mx-auto">
+                      Ready to try a different idea? Start fresh with a clean workspace and create new content.
                     </p>
                   </div>
                   <Button
@@ -734,7 +814,7 @@ const CreateContent = () => {
                     className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-base font-medium"
                   >
                     <RotateCcw className="w-5 h-5 mr-2" />
-                    Generate New From Scratch
+                    Start Fresh
                   </Button>
                 </div>
               </CardContent>

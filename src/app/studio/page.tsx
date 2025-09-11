@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
@@ -10,7 +10,9 @@ import {
   Heart,
   Share2,
   Sparkles,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Save,
+  Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,24 +30,84 @@ import {
   type CarouselApi
 } from '@/components/ui/carousel';
 import Navigation from '@/components/layout/Navigation';
-import { CreditDisplay, useCredits } from '@/components/credit/CreditDisplay';
+import { CreditDisplay, useCredits, refreshAllCredits } from '@/components/credit/CreditDisplay';
 import { ImageUpload } from '@/components/image/ImageUpload';
 
 import SuggestedPrompts from '@/components/content/SuggestedPrompts';
 import { toast } from 'sonner';
 
+// Studio cache interface (without images to save space)
+interface StudioCache {
+  mode: 'generate' | 'edit';
+  prompt: string;
+  generatedImages: string[];
+  numImages: number;
+  carouselOpen: boolean;
+  currentImageIndex: number;
+  timestamp: number;
+}
+
+// Cache utilities (simplified, no image compression)
+const CACHE_KEY = 'studio-cache';
+const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+
+const saveStudioCache = (data: Omit<StudioCache, 'timestamp'>): void => {
+  try {
+    const cacheData: StudioCache = {
+      ...data,
+      timestamp: Date.now()
+    };
+
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+    console.log('Studio cache saved');
+  } catch (error) {
+    console.error('Failed to save studio cache:', error);
+  }
+};
+
+const loadStudioCache = (): StudioCache | null => {
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (!cached) return null;
+
+    const cacheData: StudioCache = JSON.parse(cached);
+
+    // Check if cache is expired
+    if (Date.now() - cacheData.timestamp > CACHE_EXPIRY) {
+      localStorage.removeItem(CACHE_KEY);
+      return null;
+    }
+
+    console.log('Studio cache loaded');
+    return cacheData;
+  } catch (error) {
+    console.error('Failed to load studio cache:', error);
+    return null;
+  }
+};
+
+const clearStudioCache = (): void => {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+    console.log('Studio cache cleared');
+  } catch (error) {
+    console.error('Failed to clear studio cache:', error);
+  }
+};
+
 const ImageStudio = () => {
   const router = useRouter();
   const [mode, setMode] = useState<'generate' | 'edit'>('generate');
   const [prompt, setPrompt] = useState('');
-  const [uploadedImage, setUploadedImage] = useState('');
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [numImages, setNumImages] = useState(1);
   const [carouselOpen, setCarouselOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-  const { credits, hasCredits } = useCredits();
+  const [cacheLoaded, setCacheLoaded] = useState(false);
+  const { credits, hasCredits, deductCredits } = useCredits();
 
   const imageSuggestions = [
     "Professional headshot with clean background",
@@ -73,9 +135,9 @@ const ImageStudio = () => {
     setPrompt(suggestion);
   };
 
-  const handleImageUpload = (imageData: string) => {
-    setUploadedImage(imageData);
-    if (imageData && mode === 'generate') {
+  const handleImageUpload = (imageData: string[]) => {
+    setUploadedImages(imageData);
+    if (imageData.length > 0 && mode === 'generate') {
       setMode('edit');
     }
   };
@@ -86,27 +148,42 @@ const ImageStudio = () => {
       return;
     }
 
-    if (!hasCredits(10)) {
-      toast.error('Insufficient credits. You need ₹10 to generate images.');
+    const creditCost = 10 * numImages;
+    if (!hasCredits(creditCost)) {
+      toast.error(`Insufficient credits. You need ₹${creditCost} to generate ${numImages} image${numImages > 1 ? 's' : ''}.`);
       return;
     }
 
-    if (mode === 'edit' && !uploadedImage) {
+    if (mode === 'edit' && uploadedImages.length === 0) {
       toast.error('Please upload an image to edit');
       return;
     }
 
     setIsGenerating(true);
-    // Use actual images from public folder
-    const availableImages = [
-      '/ai-generated-8794203_1280.png',
-      '/AI-generated-art-copyright.jpg',
-      '/ai-images.jpeg'
-    ];
-    const selectedImages = availableImages.slice(0, numImages);
-    setGeneratedImages(selectedImages);
-    setIsGenerating(false);
-    toast.success(`Generated ${numImages} image${numImages > 1 ? 's' : ''}!`);
+
+    try {
+      // Deduct credits from database
+      const newCredits = await deductCredits(creditCost, `Generated ${numImages} image${numImages > 1 ? 's' : ''}`);
+
+      // Refresh all credit displays across the app
+      refreshAllCredits();
+
+      // Use actual images from public folder
+      const availableImages = [
+        '/ai-generated-8794203_1280.png',
+        '/AI-generated-art-copyright.jpg',
+        '/ai-images.jpeg'
+      ];
+      const selectedImages = availableImages.slice(0, numImages);
+      setGeneratedImages(selectedImages);
+
+      toast.success(`Generated ${numImages} image${numImages > 1 ? 's' : ''}! Credits remaining: ₹${newCredits}`);
+    } catch (error) {
+      console.error('Failed to generate images:', error);
+      toast.error('Failed to generate images. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const downloadImage = (imageUrl: string, index: number) => {
@@ -226,6 +303,39 @@ const ImageStudio = () => {
     };
   }, [generatedImages.length]);
 
+  // Load cache on component mount
+  useEffect(() => {
+    const cached = loadStudioCache();
+    if (cached) {
+      setMode(cached.mode);
+      setPrompt(cached.prompt);
+      setGeneratedImages(cached.generatedImages);
+      setNumImages(cached.numImages);
+      setCarouselOpen(cached.carouselOpen);
+      setCurrentImageIndex(cached.currentImageIndex);
+      toast.success('Studio data restored from cache');
+    }
+    setCacheLoaded(true);
+  }, []);
+
+  // Auto-save cache when state changes (debounced)
+  useEffect(() => {
+    if (!cacheLoaded) return;
+
+    const timeoutId = setTimeout(() => {
+      saveStudioCache({
+        mode,
+        prompt,
+        generatedImages,
+        numImages,
+        carouselOpen,
+        currentImageIndex
+      });
+    }, 1000); // Save after 1 second of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [mode, prompt, uploadedImages, generatedImages, numImages, carouselOpen, currentImageIndex, cacheLoaded]);
+
   // Auto-scroll to generated images section when images are generated
   useEffect(() => {
     if (generatedImages.length > 0) {
@@ -240,6 +350,43 @@ const ImageStudio = () => {
       }
     }
   }, [generatedImages.length]);
+
+  // Cache management functions
+  const handleSaveCache = useCallback(async () => {
+    await saveStudioCache({
+      mode,
+      prompt,
+      generatedImages,
+      numImages,
+      carouselOpen,
+      currentImageIndex
+    });
+    toast.success('Studio data saved to cache');
+  }, [mode, prompt, generatedImages, numImages, carouselOpen, currentImageIndex]);
+
+  const handleClearCache = useCallback(() => {
+    clearStudioCache();
+    toast.success('Cache cleared');
+  }, []);
+
+  const handleGenerateNewFromScratch = useCallback(() => {
+    // Clear all state
+    setMode('generate');
+    setPrompt('');
+    setUploadedImages([]);
+    setGeneratedImages([]);
+    setNumImages(1);
+    setCarouselOpen(false);
+    setCurrentImageIndex(0);
+
+    // Clear cache
+    clearStudioCache();
+
+    toast.success('Started fresh! All content and settings have been cleared.');
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -257,6 +404,8 @@ const ImageStudio = () => {
           <div className="flex justify-center mt-6">
             <CreditDisplay />
           </div>
+
+       
         </div>
 
         <div className="max-w-4xl mx-auto space-y-8">
@@ -288,7 +437,7 @@ const ImageStudio = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <ImageIcon className="w-5 h-5" />
-                    <span>Upload Image</span>
+                    <span>Upload Images</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -428,6 +577,44 @@ const ImageStudio = () => {
               </CardContent>
             </Card>
           )}
+
+          {/* Generate New From Scratch Section - Only show when there's content */}
+          {generatedImages.length > 0 && (
+            <Card className="w-full mt-8 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-2 border-dashed border-primary/30">
+              <CardContent className="p-8">
+                <div className="text-center space-y-4">
+                  <div className="flex justify-center">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                      <Wand2 className="w-8 h-8 text-primary" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-semibold text-foreground">
+                      Create Something New
+                    </h3>
+                    <p className="text-muted-foreground max-w-md mx-auto">
+                      Ready to try a different idea? Start fresh with a clean workspace and create new images.
+                    </p>
+                  </div>
+                  <Button
+                    onClick={handleGenerateNewFromScratch}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 text-base font-medium"
+                  >
+                    <Wand2 className="w-5 h-5 mr-2" />
+                    Start Fresh
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Cache Status */}
+        <div className="flex justify-center mt-4">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Save className="w-4 h-4" />
+            <span>Auto-saving to cache</span>
+          </div>
         </div>
       </div>
 

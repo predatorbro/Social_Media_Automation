@@ -1,4 +1,13 @@
-import { User, Heart, MessageCircle, Share, MoreHorizontal, ThumbsUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { User, Heart, MessageCircle, Share, MoreHorizontal, ThumbsUp, Upload, X, RotateCcw, BadgeCheck, Globe, Globe2, GlobeLock, Check, Loader2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { getSharedImages, saveSharedImages, clearSharedImages, SharedImageData } from "@/utils/storage";
+import { toast } from "sonner";
 
 interface PlatformPreviewProps {
   content: string;
@@ -6,13 +15,227 @@ interface PlatformPreviewProps {
   hashtags?: string[];
   pageName?: string;
   ownerName?: string;
+  uploadedImages?: string[];
+  onImageUpload?: (images: string[]) => void;
 }
 
-const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName }: PlatformPreviewProps) => {
+const PlatformPreview = ({
+  content,
+  platform,
+  hashtags = [],
+  pageName,
+  ownerName,
+  uploadedImages = [],
+  onImageUpload
+}: PlatformPreviewProps) => {
+  const [localImages, setLocalImages] = useState<string[]>(uploadedImages);
+  const [sharedUploadedImages, setSharedUploadedImages] = useState<SharedImageData[]>([]);
+  const [isImagesUploaded, setIsImagesUploaded] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isClearingImages, setIsClearingImages] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load shared images from localStorage on mount
+  useEffect(() => {
+    const storedImages = getSharedImages();
+    if (storedImages.length > 0) {
+      setSharedUploadedImages(storedImages);
+      setIsImagesUploaded(true);
+    }
+  }, []);
+
   // Truncate content for preview
   const truncateContent = (text: string, maxLength: number = 150) => {
     if (text.length <= maxLength) return text;
     return text.substring(0, maxLength).trim() + "...";
+  };
+
+  // Handle file upload
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent upload if images are already uploaded
+    if (isImagesUploaded) return;
+
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const currentCount = displayImages.length;
+    const filesToProcess = Array.from(files).slice(0, maxImages - currentCount);
+
+    if (filesToProcess.length === 0) {
+      return; // Already at max capacity
+    }
+
+    const newImages: string[] = [];
+    let processedCount = 0;
+
+    filesToProcess.forEach((file) => {
+      if (!file.type.startsWith('image/')) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        newImages.push(result);
+        processedCount++;
+
+        // When all files are processed, update the state
+        if (processedCount === filesToProcess.length) {
+          const updatedImages = [...displayImages, ...newImages];
+          setLocalImages(updatedImages);
+          onImageUpload?.(updatedImages);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle replacing a specific image
+  const handleReplaceImage = (index: number) => {
+    // Prevent replace if images are already uploaded
+    if (isImagesUploaded) return;
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file || !file.type.startsWith('image/')) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        const updatedImages = [...displayImages];
+        updatedImages[index] = result;
+        setLocalImages(updatedImages);
+        onImageUpload?.(updatedImages);
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  // Handle reset all images
+  const handleResetImages = async () => {
+    setIsClearingImages(true);
+
+    // If images are uploaded, delete them from Cloudinary first
+    if (isImagesUploaded && sharedUploadedImages.length > 0) {
+      try {
+        const publicIds = sharedUploadedImages.map(img => img.public_id);
+        await fetch('/api/delete-images', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ publicIds }),
+        });
+        // Show success toast for deletion
+        toast.success('Images deleted from Cloudinary');
+      } catch (error) {
+        console.error('Failed to delete images from Cloudinary:', error);
+        toast.error('Failed to delete images from Cloudinary');
+        // Still proceed with clearing local state
+      }
+    }
+
+    // Clear local state
+    setLocalImages([]);
+    setSharedUploadedImages([]);
+    setIsImagesUploaded(false);
+    clearSharedImages();
+    onImageUpload?.([]);
+    setIsClearingImages(false);
+  };
+
+  // Handle confirm upload for Instagram and Facebook
+  const handleConfirmUpload = async () => {
+    if ((platform !== 'instagram' && platform !== 'facebook') || displayImages.length === 0 || isImagesUploaded) return;
+
+    setIsUploading(true);
+    try {
+      const response = await fetch('/api/upload-images', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ images: displayImages }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      const imageData = data.images.map((result: any) => ({
+        url: result.url,
+        public_id: result.public_id,
+      }));
+
+      saveSharedImages(imageData);
+      setSharedUploadedImages(imageData);
+      setIsImagesUploaded(true);
+
+      // Clear local images since we now have uploaded ones
+      setLocalImages([]);
+
+      // Show success toast
+      toast.success(`Successfully uploaded ${imageData.length} image${imageData.length > 1 ? 's' : ''} to Cloudinary!`);
+    } catch (error) {
+      console.error('Upload failed:', error);
+      // Handle error - maybe show a toast
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Handle click on image placeholder
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  // Get aspect ratio for platform
+  const getAspectRatio = () => {
+    switch (platform) {
+      case 'instagram':
+        return 'aspect-square'; // 1:1
+      case 'facebook':
+        return 'aspect-[16/11]'; // 16:9
+      case 'twitter':
+        return 'aspect-video'; // 16:9
+      case 'linkedin':
+        return 'aspect-video'; // 16:9
+      default:
+        return 'aspect-square';
+    }
+  };
+
+  // Get current images to display
+  const displayImages = isImagesUploaded
+    ? sharedUploadedImages.map(img => img.url)
+    : localImages.length > 0
+    ? localImages
+    : uploadedImages;
+  const maxImages = 4; // Maximum 4 images allowed
+  const maxDisplayImages = 4; // Show all 4 images in grid
+
+  // Get grid layout based on number of images
+  const getGridLayout = (imageCount: number) => {
+    if (imageCount === 1) return 'grid-cols-1';
+    if (imageCount === 2) return 'grid-cols-2';
+    if (imageCount === 3) return 'grid-cols-2 grid-rows-2';
+    if (imageCount >= 4) return 'grid-cols-2 grid-rows-2';
+    return 'grid-cols-1';
+  };
+
+  // Get individual image classes for positioning
+  const getImageClasses = (index: number, total: number) => {
+    if (total === 1) return 'col-span-1 row-span-1';
+    if (total === 2) return 'col-span-1 row-span-1';
+    if (total === 3) {
+      if (index === 0) return 'col-span-2 row-span-1';
+      return 'col-span-1 row-span-1';
+    }
+    if (total === 4) return 'col-span-1 row-span-1';
+    return 'col-span-1 row-span-1';
   };
   const renderInstagramPreview = () => (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-sm mx-auto overflow-hidden">
@@ -23,22 +246,97 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
             <User className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="font-semibold text-sm text-gray-900 dark:text-white">{pageName || "your_brand"}</p>
+            <div className="flex items-center space-x-1">
+              <p className="font-semibold text-sm text-gray-900 dark:text-white">{pageName || "your_brand"}</p>
+              <BadgeCheck className="w-4 h-4 text-blue-500" />
+            </div>
             <p className="text-xs text-gray-500">Sponsored · 📍 New York</p>
           </div>
         </div>
-        <MoreHorizontal className="w-5 h-5 text-gray-400" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors outline-none focus:outline-none">
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {displayImages.length > 0 && !isImagesUploaded && (
+              <DropdownMenuItem onClick={handleConfirmUpload} disabled={isUploading}>
+                <Check className="w-4 h-4 mr-2" />
+                {isUploading ? 'Uploading...' : 'Confirm Upload'}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={handleResetImages}
+              disabled={isClearingImages}
+              className="text-red-600 focus:text-red-600"
+            >
+              {isClearingImages ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RotateCcw className="w-4 h-4 mr-2" />
+              )}
+              {isClearingImages ? 'Clearing...' : 'Clear Images'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
-      {/* Image placeholder with gradient overlay */}
-      <div className="relative aspect-square bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500">
-        <div className="absolute inset-0 bg-black bg-opacity-20"></div>
-        <div className="absolute bottom-4 left-4 right-4">
-          <div className="bg-black bg-opacity-50 rounded-lg p-3 backdrop-blur-sm">
-            <p className="text-white text-sm font-medium">✨ Your Content Here</p>
+      {/* Image Section */}
+      <div className={`relative ${getAspectRatio()} bg-gray-100 dark:bg-gray-800 overflow-hidden`}>
+        {displayImages.length > 0 ? (
+          <div className={`grid ${getGridLayout(displayImages.length)} gap-1 h-full`}>
+            {displayImages.slice(0, maxDisplayImages).map((image, index) => (
+              <div
+                key={index}
+                className={`relative ${getImageClasses(index, Math.min(displayImages.length, maxDisplayImages))} overflow-hidden cursor-pointer group`}
+                onClick={() => handleReplaceImage(index)}
+              >
+                <img
+                  src={image}
+                  alt={`Uploaded content ${index + 1}`}
+                  className="w-full h-full object-cover"
+                />
+                {/* Overlay for change/upload - only show if not uploaded */}
+                {!isImagesUploaded ? (
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-center">
+                      <Upload className="w-6 h-6 text-white mx-auto mb-1" />
+                      <p className="text-white text-xs font-medium">Change</p>
+                    </div>
+                  </div>
+                ) : null}
+
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <div
+            className={`h-full ${isImagesUploaded ? 'cursor-not-allowed' : 'cursor-pointer'} group`}
+            onClick={isImagesUploaded ? undefined : handleImageClick}
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500"></div>
+            <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-40 transition-all duration-300"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-center">
+                <svg className="w-16 h-16 text-white mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"></path></svg>
+                <p className="text-white text-sm font-medium">Your images</p>
+                <p className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-300 mt-2">Click to upload images (max 4)</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+      />
 
       {/* Actions */}
       <div className="p-3">
@@ -92,7 +390,19 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
             </svg>
           </div>
         </div>
-        <MoreHorizontal className="w-5 h-5 text-gray-400" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors outline-none focus:outline-none">
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleResetImages} className="text-red-600 focus:text-red-600">
+              <X className="w-4 h-4 mr-2" />
+              Clear Images
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Tweet Content */}
@@ -104,6 +414,7 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
               <h3 className="font-bold text-gray-900 dark:text-white text-base">{ownerName || pageName || "Your Brand"}</h3>
+              <BadgeCheck className="w-4 h-4 text-blue-500" />
               <span className="text-gray-500 text-sm">@{pageName?.toLowerCase().replace(/\s+/g, '') || 'yourbrand'}</span>
               <span className="text-gray-500">·</span>
               <span className="text-gray-500 text-sm">2h</span>
@@ -165,6 +476,7 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
           <div className="flex-1">
             <div className="flex items-center space-x-2">
               <h3 className="font-semibold text-gray-900 dark:text-white text-base">{ownerName || "Your Professional Brand"}</h3>
+              <BadgeCheck className="w-4 h-4 text-blue-500" />
               <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
               <span className="text-blue-600 font-medium text-sm">1st</span>
             </div>
@@ -178,7 +490,19 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
             </div>
           </div>
         </div>
-        <MoreHorizontal className="w-5 h-5 text-gray-400 cursor-pointer" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors outline-none focus:outline-none">
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleResetImages} className="text-red-600 focus:text-red-600">
+              <X className="w-4 h-4 mr-2" />
+              Clear Images
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Post Content */}
@@ -241,17 +565,44 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
             <User className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{pageName || "Your Brand Page"}</h3>
+            <div className="flex items-center space-x-1">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{pageName || "Your Brand Page"}</h3>
+              <BadgeCheck className="w-4 h-4 text-blue-500" />
+            </div>
             <div className="flex items-center space-x-2">
               <span className="text-xs text-gray-500">2h</span>
               <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
+              <Globe className="w-3 h-3 rounded-full" />
             </div>
           </div>
         </div>
-        <MoreHorizontal className="w-5 h-5 text-gray-400 cursor-pointer" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="w-5 h-5 text-gray-400 hover:text-gray-600 transition-colors outline-none focus:outline-none">
+              <MoreHorizontal className="w-5 h-5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            {displayImages.length > 0 && !isImagesUploaded && (
+              <DropdownMenuItem onClick={handleConfirmUpload} disabled={isUploading}>
+                <Check className="w-4 h-4 mr-2" />
+                {isUploading ? 'Uploading...' : 'Confirm Upload'}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onClick={handleResetImages}
+              disabled={isClearingImages}
+              className="text-red-600 focus:text-red-600"
+            >
+              {isClearingImages ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <RotateCcw className="w-4 h-4 mr-2" />
+              )}
+              {isClearingImages ? 'Clearing...' : 'Clear Images'}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Post Content */}
@@ -266,17 +617,58 @@ const PlatformPreview = ({ content, platform, hashtags = [], pageName, ownerName
           </p>
         )}
 
-        {/* Image placeholder */}
-        <div className="relative bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-lg overflow-hidden mb-4">
-          <div className="aspect-video flex items-center justify-center">
-            <div className="text-center">
-              <svg className="w-16 h-16 text-white mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
-              </svg>
-              <p className="text-white text-sm font-medium">Your Image Here</p>
+        {/* Image Section */}
+        <div className={`relative ${getAspectRatio()} bg-gray-100 dark:bg-gray-800 overflow-hidden mb-4 rounded-lg`}>
+          {displayImages.length > 0 ? (
+            <div className={`grid ${getGridLayout(displayImages.length)} gap-1 h-full`}>
+              {displayImages.slice(0, maxDisplayImages).map((image, index) => (
+                <div
+                  key={index}
+                  className={`relative ${getImageClasses(index, Math.min(displayImages.length, maxDisplayImages))} overflow-hidden cursor-pointer group`}
+                  onClick={() => handleReplaceImage(index)}
+                >
+                  <img
+                    src={image}
+                    alt={`Uploaded content ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Overlay for change/upload - only show if not uploaded */}
+                  {!isImagesUploaded ? (
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-center">
+                        <Upload className="w-6 h-6 text-white mx-auto mb-1" />
+                        <p className="text-white text-xs font-medium">Change</p>
+                      </div>
+                    </div>
+                  ) : null}
+
+                </div>
+              ))}
             </div>
-          </div>
+          ) : (
+            <div className="h-full cursor-pointer group" onClick={handleImageClick}>
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500"></div>
+              <div className="absolute inset-0 bg-black bg-opacity-20 group-hover:bg-opacity-40 transition-all duration-300"></div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="text-center">
+                  <svg className="w-16 h-16 text-white mx-auto mb-2" fill="currentColor" viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"></path></svg>
+                  <p className="text-white text-sm font-medium">Your images</p>
+                  <p className="text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-300 mt-2">Click to upload images (max 4)</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          onChange={handleFileUpload}
+          className="hidden"
+        />
       </div>
 
       {/* Engagement Stats */}
