@@ -29,7 +29,7 @@ const convertToBase64 = async (imageData) => {
 };
 
 const scheduleToZapier = async (postData) => {
-  const zapierWebhookUrl = "https://hooks.zapier.com/hooks/catch/24557250/ud03e5q/";
+  const zapierWebhookUrl = process.env.ZAPIER_WEBHOOK_URL;
 
   try {
     // Format hashtags as a single string with # prefix and space separation
