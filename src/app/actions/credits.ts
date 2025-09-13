@@ -2,9 +2,7 @@
 
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
-import { PrismaClient } from "@/generated/prisma";
-
-const prisma = new PrismaClient();
+import { prisma } from "@/lib/Prisma";
 
 // Get user credits
 export async function getUserCredits(): Promise<number> {

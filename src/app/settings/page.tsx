@@ -32,7 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Loading } from "@/components/ui/loading";
+import { Loading } from "@/components/ui/Loader";
 import Navigation from "@/components/layout/Navigation";
 import { useToast } from "@/hooks/use-toast";
 import { useTheme } from "@/components/theme-provider";
@@ -313,7 +313,7 @@ const Settings = () => {
           </Card>
 
           {/* Notification Settings */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Bell className="w-5 h-5 text-primary" />
@@ -365,7 +365,7 @@ const Settings = () => {
                 />
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Appearance & Preferences */}
           <Card>
@@ -434,7 +434,7 @@ const Settings = () => {
           </Card>
 
           {/* Data & Security */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Shield className="w-5 h-5 text-primary" />
@@ -458,39 +458,9 @@ const Settings = () => {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
-          {/* Supabase Integration */}
-          <Card className="border-warning">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <AlertTriangle className="w-5 h-5 text-warning" />
-                <span>Backend Integration Required</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                To unlock the full potential of SocialFlow, including AI content generation, user authentication,
-                and data persistence, you'll need to connect to Supabase.
-              </p>
 
-              <div className="bg-muted/50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">What you'll get with Supabase:</h4>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• AI-powered content generation with Gemini API</li>
-                  <li>• Secure user authentication and profiles</li>
-                  <li>• Cloud data storage and synchronization</li>
-                  <li>• Real-time content scheduling</li>
-                  <li>• Advanced analytics and insights</li>
-                </ul>
-              </div>
-
-              <HeroButton variant="hero" className="flex items-center space-x-2">
-                <Database className="w-4 h-4" />
-                <span>Connect to Supabase</span>
-              </HeroButton>
-            </CardContent>
-          </Card>
 
           {/* Developer Contact */}
           <Card className="bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">

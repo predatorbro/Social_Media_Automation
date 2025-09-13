@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { User, Heart, MessageCircle, Share, MoreHorizontal, ThumbsUp, Upload, X, RotateCcw, BadgeCheck, Globe, Globe2, GlobeLock, Check, Loader2 } from "lucide-react";
+import { User, Heart, MessageCircle, Share, MoreHorizontal, ThumbsUp, Upload, X, RotateCcw, BadgeCheck, Globe, Globe2, GlobeLock, Check, Loader2, PlaneIcon, Send } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getSharedImages, saveSharedImages, clearSharedImages, SharedImageData } from "@/utils/storage";
 import { toast } from "sonner";
+import axios from "axios";
 
 interface PlatformPreviewProps {
   content: string;
@@ -15,8 +16,9 @@ interface PlatformPreviewProps {
   hashtags?: string[];
   pageName?: string;
   ownerName?: string;
-  uploadedImages?: string[];
-  onImageUpload?: (images: string[]) => void;
+  onCloudinaryUrls?: (urls: string[]) => void;
+  onLocalImagesChange?: (hasLocalImages: boolean, isUploading: boolean) => void;
+  onResetImages?: () => void;
 }
 
 const PlatformPreview = ({
@@ -25,15 +27,17 @@ const PlatformPreview = ({
   hashtags = [],
   pageName,
   ownerName,
-  uploadedImages = [],
-  onImageUpload
+  onCloudinaryUrls,
+  onLocalImagesChange,
+  onResetImages
 }: PlatformPreviewProps) => {
-  const [localImages, setLocalImages] = useState<string[]>(uploadedImages);
+  const [localImages, setLocalImages] = useState<string[]>([]);
   const [sharedUploadedImages, setSharedUploadedImages] = useState<SharedImageData[]>([]);
   const [isImagesUploaded, setIsImagesUploaded] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isClearingImages, setIsClearingImages] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // Load shared images from localStorage on mount
   useEffect(() => {
@@ -44,10 +48,41 @@ const PlatformPreview = ({
     }
   }, []);
 
-  // Truncate content for preview
-  const truncateContent = (text: string, maxLength: number = 150) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength).trim() + "...";
+  // Pass Cloudinary URLs to parent component whenever images change
+  useEffect(() => {
+    const cloudinaryUrls = sharedUploadedImages.map((img: any) => img.url);
+    onCloudinaryUrls?.(cloudinaryUrls);
+  }, [sharedUploadedImages, onCloudinaryUrls]);
+
+  // Notify parent about local images and uploading state
+  useEffect(() => {
+    const hasLocalImages = localImages.length > 0 && !isImagesUploaded;
+    onLocalImagesChange?.(hasLocalImages, isUploading);
+  }, [localImages, isImagesUploaded, isUploading, onLocalImagesChange]);
+
+  // Handle reset from parent component
+  useEffect(() => {
+    if (onResetImages) {
+      const resetImages = () => {
+        setLocalImages([]);
+        setSharedUploadedImages([]);
+        setIsImagesUploaded(false);
+        clearSharedImages();
+      };
+
+      // Store the reset function for parent to call
+      // This is a bit of a hack, but we need to expose the reset function to parent
+      (window as any).platformPreviewReset = resetImages;
+    }
+  }, [onResetImages]);
+
+  // Format content with line breaks and truncate for preview
+  const formatContent = (text: string, maxLength: number = 150) => {
+    // First, convert newlines to <br> tags for HTML display
+    const formattedText = text.replace(/\n/g, '<br />');
+
+    if (formattedText.length <= maxLength) return formattedText;
+    return formattedText.substring(0, maxLength).trim() + "...";
   };
 
   // Handle file upload
@@ -81,7 +116,6 @@ const PlatformPreview = ({
         if (processedCount === filesToProcess.length) {
           const updatedImages = [...displayImages, ...newImages];
           setLocalImages(updatedImages);
-          onImageUpload?.(updatedImages);
         }
       };
       reader.readAsDataURL(file);
@@ -106,7 +140,6 @@ const PlatformPreview = ({
         const updatedImages = [...displayImages];
         updatedImages[index] = result;
         setLocalImages(updatedImages);
-        onImageUpload?.(updatedImages);
       };
       reader.readAsDataURL(file);
     };
@@ -115,19 +148,20 @@ const PlatformPreview = ({
 
   // Handle reset all images
   const handleResetImages = async () => {
+    // Add confirmation dialog to prevent accidental clearing
+    const confirmClear = window.confirm(
+      'Are you sure you want to clear all images? This will permanently delete uploaded images from the server.'
+    );
+
+    if (!confirmClear) return;
+
     setIsClearingImages(true);
 
     // If images are uploaded, delete them from Cloudinary first
     if (isImagesUploaded && sharedUploadedImages.length > 0) {
       try {
         const publicIds = sharedUploadedImages.map(img => img.public_id);
-        await fetch('/api/delete-images', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ publicIds }),
-        });
+        await axios.post('/api/delete-images', { publicIds });
         // Show success toast for deletion
         toast.success('Images deleted from Cloudinary');
       } catch (error) {
@@ -142,29 +176,18 @@ const PlatformPreview = ({
     setSharedUploadedImages([]);
     setIsImagesUploaded(false);
     clearSharedImages();
-    onImageUpload?.([]);
     setIsClearingImages(false);
   };
 
-  // Handle confirm upload for Instagram and Facebook
+  // Handle confirm upload for all platforms
   const handleConfirmUpload = async () => {
-    if ((platform !== 'instagram' && platform !== 'facebook') || displayImages.length === 0 || isImagesUploaded) return;
+    if (displayImages.length === 0 || isImagesUploaded) return;
 
     setIsUploading(true);
     try {
-      const response = await fetch('/api/upload-images', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ images: displayImages }),
-      });
+      const response = await axios.post('/api/upload-images', { images: displayImages });
 
-      if (!response.ok) {
-        throw new Error('Upload failed');
-      }
-
-      const data = await response.json();
+      const data = response.data;
       const imageData = data.images.map((result: any) => ({
         url: result.url,
         public_id: result.public_id,
@@ -181,7 +204,7 @@ const PlatformPreview = ({
       toast.success(`Successfully uploaded ${imageData.length} image${imageData.length > 1 ? 's' : ''} to Cloudinary!`);
     } catch (error) {
       console.error('Upload failed:', error);
-      // Handle error - maybe show a toast
+      toast.error('Failed to upload images. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -212,8 +235,8 @@ const PlatformPreview = ({
   const displayImages = isImagesUploaded
     ? sharedUploadedImages.map(img => img.url)
     : localImages.length > 0
-    ? localImages
-    : uploadedImages;
+      ? localImages
+      : [];
   const maxImages = 4; // Maximum 4 images allowed
   const maxDisplayImages = 4; // Show all 4 images in grid
 
@@ -260,10 +283,14 @@ const PlatformPreview = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {displayImages.length > 0 && !isImagesUploaded && (
-              <DropdownMenuItem onClick={handleConfirmUpload} disabled={isUploading}>
-                <Check className="w-4 h-4 mr-2" />
-                {isUploading ? 'Uploading...' : 'Confirm Upload'}
+            {displayImages.length > 0 && (
+              <DropdownMenuItem
+                onClick={isImagesUploaded ? undefined : handleConfirmUpload}
+                disabled={isUploading}
+                className={isImagesUploaded ? 'text-green-600 focus:text-green-600' : ''}
+              >
+                <Check className={`w-4 h-4 mr-2 ${isImagesUploaded ? 'text-green-600' : ''}`} />
+                {isUploading ? 'Uploading...' : isImagesUploaded ? 'Uploaded' : 'Confirm Upload'}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -286,7 +313,7 @@ const PlatformPreview = ({
       <div className={`relative ${getAspectRatio()} bg-gray-100 dark:bg-gray-800 overflow-hidden`}>
         {displayImages.length > 0 ? (
           <div className={`grid ${getGridLayout(displayImages.length)} gap-1 h-full`}>
-            {displayImages.slice(0, maxDisplayImages).map((image, index) => (
+            {displayImages.slice(0, maxDisplayImages).map((image: string, index: number) => (
               <div
                 key={index}
                 className={`relative ${getImageClasses(index, Math.min(displayImages.length, maxDisplayImages))} overflow-hidden cursor-pointer group`}
@@ -356,7 +383,7 @@ const PlatformPreview = ({
         <div className="mb-2">
           <p className="text-sm text-gray-900 dark:text-white">
             <span className="font-semibold">{pageName || "your_brand"}</span>{" "}
-            <span className="text-gray-700 dark:text-gray-300">{truncateContent(content)}</span>
+            <span className="text-gray-700 dark:text-gray-300" dangerouslySetInnerHTML={{ __html: formatContent(content) }}></span>
           </p>
         </div>
 
@@ -397,9 +424,8 @@ const PlatformPreview = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleResetImages} className="text-red-600 focus:text-red-600">
-              <X className="w-4 h-4 mr-2" />
-              Clear Images
+            <DropdownMenuItem disabled className="text-gray-400">
+              <span className="text-sm">Image upload not available for Twitter</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -420,8 +446,7 @@ const PlatformPreview = ({
               <span className="text-gray-500 text-sm">2h</span>
             </div>
 
-            <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-3">
-              {truncateContent(content)}
+            <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-3" dangerouslySetInnerHTML={{ __html: formatContent(content) }}>
             </div>
 
             {hashtags.length > 0 && (
@@ -429,6 +454,8 @@ const PlatformPreview = ({
                 {hashtags.map(tag => `#${tag}`).join(' ')}
               </p>
             )}
+
+
 
             {/* Engagement Stats */}
             <div className="flex items-center justify-between max-w-md pt-3 border-t border-gray-100 dark:border-gray-700">
@@ -462,6 +489,16 @@ const PlatformPreview = ({
           </div>
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+      />
     </div>
   );
 
@@ -484,9 +521,7 @@ const PlatformPreview = ({
             <div className="flex items-center space-x-2 mt-1">
               <span className="text-xs text-gray-500">2h</span>
               <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
-              <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-              </svg>
+              <Globe className="w-3 h-3 rounded-full" />
             </div>
           </div>
         </div>
@@ -497,9 +532,8 @@ const PlatformPreview = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleResetImages} className="text-red-600 focus:text-red-600">
-              <X className="w-4 h-4 mr-2" />
-              Clear Images
+            <DropdownMenuItem disabled className="text-gray-400">
+              <span className="text-sm">Image upload not available for LinkedIn</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -507,8 +541,7 @@ const PlatformPreview = ({
 
       {/* Post Content */}
       <div className="p-4">
-        <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-4">
-          {truncateContent(content)}
+        <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: formatContent(content) }}>
         </div>
 
         {hashtags.length > 0 && (
@@ -518,7 +551,19 @@ const PlatformPreview = ({
             </p>
           </div>
         )}
+
+
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={handleFileUpload}
+        className="hidden"
+      />
 
       {/* Engagement Section */}
       <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3">
@@ -546,9 +591,7 @@ const PlatformPreview = ({
             <span className="text-sm font-medium">Repost</span>
           </div>
           <div className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 cursor-pointer transition-colors">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M21 8c-1.5 0-2.3.5-3.5 1.5-1.2 1-2.3 2-3.5 2s-2.3-1-3.5-2C8.3 8.5 7.5 8 6 8s-2.3.5-3.5 1.5C1.3 10.5.5 11 .5 12s.8 1.5 2 2.5c1.2 1 2.3 2 3.5 2s2.3-1 3.5-2c1.2-1 2.3-2 3.5-2s2.3 1 3.5 2c1.2 1 2.3 2 3.5 2s2.3-1 3.5-2c1.2-1 2-1.5 2-2.5s-.8-1.5-2-2.5C23.3 8.5 22.5 8 21 8z" />
-            </svg>
+            <Send className="w-4 h-4" />
             <span className="text-sm font-medium">Send</span>
           </div>
         </div>
@@ -583,10 +626,14 @@ const PlatformPreview = ({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            {displayImages.length > 0 && !isImagesUploaded && (
-              <DropdownMenuItem onClick={handleConfirmUpload} disabled={isUploading}>
-                <Check className="w-4 h-4 mr-2" />
-                {isUploading ? 'Uploading...' : 'Confirm Upload'}
+            {displayImages.length > 0 && (
+              <DropdownMenuItem
+                onClick={isImagesUploaded ? undefined : handleConfirmUpload}
+                disabled={isUploading}
+                className={isImagesUploaded ? 'text-green-600 focus:text-green-600' : ''}
+              >
+                <Check className={`w-4 h-4 mr-2 ${isImagesUploaded ? 'text-green-600' : ''}`} />
+                {isUploading ? 'Uploading...' : isImagesUploaded ? 'Uploaded' : 'Confirm Upload'}
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
@@ -607,8 +654,7 @@ const PlatformPreview = ({
 
       {/* Post Content */}
       <div className="p-4">
-        <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-4">
-          {truncateContent(content)}
+        <div className="text-gray-900 dark:text-white text-base leading-relaxed mb-4" dangerouslySetInnerHTML={{ __html: formatContent(content) }}>
         </div>
 
         {hashtags.length > 0 && (
@@ -621,7 +667,7 @@ const PlatformPreview = ({
         <div className={`relative ${getAspectRatio()} bg-gray-100 dark:bg-gray-800 overflow-hidden mb-4 rounded-lg`}>
           {displayImages.length > 0 ? (
             <div className={`grid ${getGridLayout(displayImages.length)} gap-1 h-full`}>
-              {displayImages.slice(0, maxDisplayImages).map((image, index) => (
+              {displayImages.slice(0, maxDisplayImages).map((image: string, index: number) => (
                 <div
                   key={index}
                   className={`relative ${getImageClasses(index, Math.min(displayImages.length, maxDisplayImages))} overflow-hidden cursor-pointer group`}

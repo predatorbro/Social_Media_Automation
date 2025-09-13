@@ -49,7 +49,7 @@ const Navigation = () => {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className={`bg-card/80 backdrop-blur-sm border-b w-full top-0 z-50 ${pathname == "/" ? "fixed" : "sticky"}`} >
+    <nav className={`bg-card/30 backdrop-blur-sm border-b w-full top-0 z-50 ${pathname == "/" ? "fixed" : "sticky"}`} >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
@@ -57,7 +57,7 @@ const Navigation = () => {
               <div className="w-8 h-8 bg-hero-gradient rounded-lg flex items-center justify-center">
                 <Zap className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-xl text-foreground">SocialFlow</span>
+              <span className="font-bold text-xl text-foreground">Sync</span>
             </Link>
           </div>
 

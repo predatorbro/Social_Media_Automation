@@ -1,4 +1,5 @@
 // Storage utility functions for content management
+import axios from "axios";
 
 export interface SavedContent {
   id: string;
@@ -70,8 +71,8 @@ export const deleteContent = (contentId: string): void => {
 
 export const updateContentStatus = (contentId: string, status: 'draft' | 'published' | 'scheduled'): void => {
   const content = getStoredContent();
-  const updated = content.map(c => 
-    c.id === contentId 
+  const updated = content.map(c =>
+    c.id === contentId
       ? { ...c, status, updatedAt: new Date().toISOString() }
       : c
   );
@@ -92,7 +93,7 @@ export const getScheduledPosts = (): ScheduledPost[] => {
 
 export const updateScheduledPostStatus = (postId: string, status: 'scheduled' | 'posted' | 'failed'): void => {
   const posts = getScheduledPosts();
-  const updated = posts.map(p => 
+  const updated = posts.map(p =>
     p.id === postId ? { ...p, status, updatedAt: new Date().toISOString() } : p
   );
   localStorage.setItem('scheduled-posts', JSON.stringify(updated));
@@ -114,6 +115,15 @@ export interface CalendarEvent {
   type: 'post' | 'story' | 'reel';
   time?: string; // HH:MM format
   scheduledPostId?: string; // Link to scheduled post
+  // Additional scheduling properties
+  timezone?: string;
+  recurring?: {
+    type: 'daily' | 'weekly' | 'monthly';
+    interval: number;
+    endDate?: string;
+  };
+  status?: 'scheduled' | 'posted' | 'failed';
+  createdAt?: string;
 }
 
 export const saveCalendarEvent = (event: CalendarEvent): void => {
@@ -136,7 +146,7 @@ export const deleteCalendarEvent = (eventId: string): void => {
 export const cleanupOldData = (): void => {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  
+
   // Clean up old completed/failed scheduled posts
   const scheduledPosts = getScheduledPosts();
   const activeScheduledPosts = scheduledPosts.filter(post => {
@@ -144,7 +154,7 @@ export const cleanupOldData = (): void => {
     const postDate = new Date(post.createdAt);
     return postDate > thirtyDaysAgo;
   });
-  
+
   localStorage.setItem('scheduled-posts', JSON.stringify(activeScheduledPosts));
 };
 
@@ -257,7 +267,7 @@ export const isSettingsAlertDismissed = (): boolean => {
   const dismissed = localStorage.getItem('settings-alert-dismissed');
   return dismissed === 'true';
 };
- 
+
 export const resetSettingsAlert = (): void => {
   localStorage.removeItem('settings-alert-dismissed');
 };
@@ -279,6 +289,7 @@ export interface CreatePageState {
   generatedContent: Record<string, { content: string; hashtags: string[]; characterCount: number }>;
   currentViewingPlatform: string;
   currentContentId: string;
+  cloudinaryUrls: string[];
 }
 
 export const saveCreatePageState = (state: CreatePageState): void => {
@@ -290,11 +301,25 @@ export const getCreatePageState = (): Partial<CreatePageState> => {
   return stored ? JSON.parse(stored) : {};
 };
 
-export const clearCreatePageState = (): void => {
+export const clearCreatePageState = async () => {
+  // First, synchronously clear the main state
   localStorage.removeItem('create-page-state');
-  localStorage.removeItem('create-page-generated-content');
+
+  // Handle image cleanup asynchronously
+  const sharedUploadedImages = JSON.parse(localStorage.getItem('shared-uploaded-images') || "[]");
+  if (sharedUploadedImages && sharedUploadedImages.length > 0) {
+    try {
+      const publicIds = sharedUploadedImages.map((img: SharedImageData) => img.public_id);
+      await axios.post('/api/delete-images', { publicIds });
+    } catch (error) {
+      console.error('Error deleting images:', error);
+    } finally {
+      // Always clear the images from localStorage, even if API call fails
+      localStorage.removeItem('shared-uploaded-images');
+    }
+  }
 };
- 
+
 // Shared Images Storage (for both Instagram and Facebook)
 export interface SharedImageData {
   url: string;
@@ -315,8 +340,8 @@ export const clearSharedImages = (): void => {
 };
 
 // Legacy functions for backward compatibility (redirect to shared)
-export interface InstagramImageData extends SharedImageData {}
-export interface FacebookImageData extends SharedImageData {}
+export interface InstagramImageData extends SharedImageData { }
+export interface FacebookImageData extends SharedImageData { }
 
 export const saveInstagramImages = saveSharedImages;
 export const getInstagramImages = getSharedImages;

@@ -1,35 +1,21 @@
 // API route for scheduling posts
 import { NextResponse } from 'next/server';
-
-// Convert image URL/data to base64 (without data URL prefix)
-const convertToBase64 = async (imageData) => {
-  try {
-    let base64Data = '';
-
-    // If it's already a data URL (base64), extract just the base64 part
-    if (imageData.startsWith('data:')) {
-      base64Data = imageData.replace(/^data:image\/\w+;base64,/, "");
-    }
-    // If it's a URL, fetch and convert
-    else if (imageData.startsWith('http')) {
-      const response = await fetch(imageData);
-      const arrayBuffer = await response.arrayBuffer();
-      base64Data = Buffer.from(arrayBuffer).toString('base64');
-    }
-    // If it's a file path or other format, return as-is
-    else {
-      return imageData;
-    }
-
-    return base64Data;
-  } catch (error) {
-    console.error('Error converting image to base64:', error);
-    return imageData; // Return original if conversion fails
-  }
-};
+import axios from 'axios';
 
 const scheduleToZapier = async (postData) => {
-  const zapierWebhookUrl = process.env.ZAPIER_WEBHOOK_URL;
+  // Choose the correct webhook URL based on platform
+  let zapierWebhookUrl;
+
+  switch (postData.platform) {
+    case 'instagram':
+      zapierWebhookUrl = process.env.ZAPIER_INSTAGRAM_WEBHOOK_URL;
+      break;
+    case 'linkedin':
+      zapierWebhookUrl = process.env.ZAPIER_LINKEDIN_WEBHOOK_URL;
+      break;
+    default:
+      zapierWebhookUrl = process.env.ZAPIER_FACEBOOK_WEBHOOK_URL;
+  }
 
   try {
     // Format hashtags as a single string with # prefix and space separation
@@ -37,38 +23,20 @@ const scheduleToZapier = async (postData) => {
       ? postData.hashtags.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ')
       : '';
 
-    // Convert images to base64
-    let base64Images = [];
-    if (postData.images && postData.images.length > 0) {
-      base64Images = await Promise.all(
-        postData.images.map(image => convertToBase64(image))
-      );
-    }
-
-    const response = await fetch(zapierWebhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        platform: postData.platform || 'facebook',
-        content: postData.content,
-        scheduledTime: postData.scheduledTime,
-        pageId: postData.pageId,
-        hashtags: formattedHashtags, // Send as formatted string
-        images: base64Images, // Send as base64 encoded images
-        mediaUrls: postData.mediaUrls || []
-      })
-    });
-
-    console.log('Sending to Zapier:', {
+    const response = await axios.post(zapierWebhookUrl, {
       platform: postData.platform,
-      contentLength: postData.content?.length,
-      hashtags: formattedHashtags,
-      imageCount: base64Images.length
+      content: postData.content,
+      scheduledTime: postData.scheduledTime,
+      pageId: postData.pageId,
+      hashtags: formattedHashtags, // Send as formatted string
+      images: postData.images || [], // Send Cloudinary URLs directly
+      mediaUrls: postData.mediaUrls || []
     });
+    console.log(response)
 
-    return response.ok;
+    console.log("PostData send to Zapier:", postData)
+
+    return response.status >= 200 && response.status < 300;
   } catch (error) {
     console.error('Zapier webhook failed:', error);
     return false;

@@ -2,30 +2,21 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Search,
-  Filter,
-  MoreVertical,
-  Edit,
   Trash2,
   Copy,
-  Share2,
   FileText,
   Calendar,
-  Tag,
   X,
-  Plus
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Send
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,12 +29,17 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { useSession } from 'next-auth/react';
-import { getUserContent, updateContent, deleteContent, deleteContentItem } from '@/app/actions/content';
+import { getUserContent, deleteContentItem, updateContent } from '@/app/actions/content';
+import { Loading } from '@/components/ui/Loader';
+import { getUserProfile } from '@/utils/storage';
+import { saveUserCalendar } from '@/app/actions/calendar';
+import ScheduleModal, { ScheduleData } from '@/components/content/ScheduleModal';
+import axios from 'axios';
 
 interface ContentItem {
   id: string;
   title: string;
-  content: string;
+  originalPrompt?: string;
   platforms: string[];
   generatedContent: {
     [platform: string]: {
@@ -69,8 +65,14 @@ const ContentManager = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [selectedPlatformForSchedule, setSelectedPlatformForSchedule] = useState("");
+  const [selectedContentForSchedule, setSelectedContentForSchedule] = useState("");
+  const [currentContentId, setCurrentContentId] = useState<string>(""); 
 
   useEffect(() => {
+    
     if (session?.user?.email) {
       loadContent();
     } else {
@@ -82,8 +84,7 @@ const ContentManager = () => {
     if (!session?.user?.email) return;
 
     try {
-      const content = await getUserContent(session.user.email);
-      console.log('Database content type:', typeof content, 'Value:', content);
+      const content = await getUserContent(session.user.email); 
 
       if (content) {
         // Ensure content is an array for localStorage compatibility
@@ -138,17 +139,9 @@ const ContentManager = () => {
     setContentItems(content);
   };
 
-  const updateContentStatus = (contentId: string, status: 'draft' | 'published') => {
-    const updated = contentItems.map(item =>
-      item.id === contentId
-        ? { ...item, status, updatedAt: new Date().toISOString() }
-        : item
-    );
-    saveContent(updated);
-    toast.success(`Content ${status === 'published' ? 'published' : 'moved to drafts'}!`);
-  };
 
-  const deleteContentItem = async (contentId: string) => {
+
+  const deleteContentItemHandler = async (contentId: string) => {
     if (!session?.user?.email) {
       // Fallback to localStorage only
       const filtered = contentItems?.filter(item => item.id !== contentId);
@@ -189,6 +182,22 @@ const ContentManager = () => {
     toast.success('Content copied to clipboard!');
   };
 
+  const copyPlatformContent = (platform: string, content: string, hashtags: string[]) => {
+    const fullContent = `${content}\n\n${hashtags.map(tag => `#${tag}`).join(' ')}`;
+    navigator.clipboard.writeText(fullContent);
+    toast.success(`${platform} content copied to clipboard!`);
+  };
+
+  const toggleExpanded = (itemId: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
+    }
+    setExpandedItems(newExpanded);
+  };
+
   const filteredContent = contentItems
     .filter(item => {
       // Always apply tab filtering
@@ -207,16 +216,16 @@ const ContentManager = () => {
 
       // Check each field with proper null checks
       const titleMatch = item.title && item.title.toLowerCase().includes(query);
-      const contentMatch = item.content && item.content.toLowerCase().includes(query);
       const tagMatch = item.tags && item.tags.some(tag => tag && tag.toLowerCase().includes(query));
       const platformMatch = item.platforms && item.platforms.some(platform => platform && platform.toLowerCase().includes(query));
       const categoryMatch = item.category && item.category.toLowerCase().includes(query);
 
-      const matchesSearch = titleMatch || contentMatch || tagMatch || platformMatch || categoryMatch;
+      const matchesSearch = titleMatch || tagMatch || platformMatch || categoryMatch;
 
       return matchesSearch && matchesTab;
     })
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .slice(0, 10); // Only show newest 10 records
 
   const getPlatformColor = (platform: string) => {
     const colors: Record<string, string> = {
@@ -237,8 +246,123 @@ const ContentManager = () => {
     });
   };
 
+  const handlePublishFromLibrary = (platformId: string, contentId: string) => {
+    // Check if Twitter automation is disabled
+    if (platformId === 'twitter') {
+      toast.error('Twitter automation feature is still in development phase. Coming soon!!!.');
+      return;
+    }
+
+    // Find the content item
+    const contentItem = contentItems.find(item => item.id === contentId);
+    if (!contentItem) {
+      toast.error('Could not find the content to publish.');
+      return;
+    }
+
+    // Get the platform content
+    const platformData = contentItem.generatedContent[platformId];
+    if (!platformData) {
+      toast.error(`No content found for ${platformId}.`);
+      return;
+    }
+
+    setSelectedPlatformForSchedule(platformId);
+    setSelectedContentForSchedule(platformData.content + '\n\n' + platformData.hashtags.map((h: string) => `#${h}`).join(' '));
+    setCurrentContentId(contentId);
+    setScheduleModalOpen(true);
+  };
+
+  const handleScheduleConfirm = async (scheduleData: ScheduleData) => {
+    if (!currentContentId) return;
+
+    try {
+      // Use the scheduled date/time in ISO format for API
+      const scheduledTime = scheduleData.date.toISOString();
+
+      // Get the content item
+      const contentItem = contentItems.find(item => item.id === currentContentId);
+      if (!contentItem) return;
+
+      // Get the platform content
+      const platformData = contentItem.generatedContent[selectedPlatformForSchedule];
+      if (!platformData) return;
+
+      // Prepare post data for API call
+      const postData = {
+        platform: selectedPlatformForSchedule,
+        content: platformData.content,
+        hashtags: platformData.hashtags || [],
+        scheduledTime: scheduledTime,
+        pageId: getUserProfile().page || process.env.FACEBOOK_PAGE_ID,
+        images: [] // Library content doesn't have images for now
+      };
+
+      // Call the API to schedule the post
+      const response = await axios.post('/api/schedule-post', postData);
+
+      if (response.data.success) {
+        // Update content status to published
+        if (session?.user?.email) {
+          try {
+            const updatedContent = {
+              id: currentContentId,
+              status: 'published',
+              updatedAt: new Date().toISOString()
+            };
+            await updateContent(session.user.email, updatedContent);
+          } catch (error) {
+            console.error('Error updating content status:', error);
+          }
+        }
+
+        // Create unified calendar event for local storage
+        const localDate = new Date(scheduleData.date.getTime() - (scheduleData.date.getTimezoneOffset() * 60000));
+        const calendarEvent = {
+          id: `${Date.now()}-${selectedPlatformForSchedule}-${Math.random().toString(36).substr(2, 9)}`,
+          date: localDate.toISOString().split('T')[0],
+          title: `${selectedPlatformForSchedule.charAt(0).toUpperCase() + selectedPlatformForSchedule.slice(1)} Post`,
+          content: platformData.content,
+          platform: [selectedPlatformForSchedule],
+          type: 'post',
+          time: scheduleData.time,
+          scheduledPostId: currentContentId,
+          status: 'scheduled',
+          createdAt: new Date().toISOString()
+        };
+
+        // Save to localStorage
+        const existingEvents = JSON.parse(localStorage.getItem('calendar-events') || '[]');
+        const updatedEvents = [...existingEvents, calendarEvent];
+        localStorage.setItem('calendar-events', JSON.stringify(updatedEvents));
+
+        // Save to database if user is logged in
+        if (session?.user?.email) {
+          try {
+            await saveUserCalendar(session.user.email, updatedEvents);
+            console.log('Calendar events saved to database');
+          } catch (error) {
+            console.error('Error saving calendar to database:', error);
+          }
+        }
+
+        toast.success(`${selectedPlatformForSchedule.charAt(0).toUpperCase() + selectedPlatformForSchedule.slice(1)} post scheduled for ${scheduleData.date.toLocaleDateString()} at ${scheduleData.time}`);
+      } else {
+        throw new Error(response.data.error || 'Failed to schedule post');
+      }
+    } catch (error: any) {
+      console.error('Error scheduling post:', error);
+      toast.error(error.response?.data?.error || error.message || "Failed to schedule post. Please try again.");
+    }
+
+    setScheduleModalOpen(false);
+  };
+
   return (
     <div className="space-y-6">
+      {/* Full Page Loader */}
+      {loading && <Loading />}
+
       {/* Search and Filter */}
       <Card className="w-full">
         <CardHeader>
@@ -316,99 +440,110 @@ const ContentManager = () => {
             </Card>
           ) : (
             <div className="space-y-4">
-              {filteredContent.map((item) => (
-                <Card key={item.id} className="w-full">
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-2">{item.title}</CardTitle>
-                        <p className="text-muted-foreground text-sm line-clamp-2 mb-3">
-                          {item.content}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={item.status === 'published' ? 'default' : 'secondary'}>
-                            {item.status}
-                          </Badge>
-                          <div className="flex items-center gap-1">
-                            {(item.platforms || []).map((platform) => (
-                              <div
-                                key={platform}
-                                className={`w-3 h-3 rounded-full ${getPlatformColor(platform)}`}
-                                title={platform}
-                              />
-                            ))}
-                          </div>
-                          <div className="flex items-center text-xs text-muted-foreground">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            {formatDate(item.updatedAt)}
+              {filteredContent.map((item) => {
+                const isExpanded = expandedItems.has(item.id);
+                return (
+                  <Card key={item.id} className="w-full">
+                    <CardHeader>
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg mb-2">{item.title}</CardTitle>
+                          <p className="text-muted-foreground text-sm mb-3">
+                            {item.originalPrompt && item.originalPrompt.length > 150
+                              ? `${item.originalPrompt.substring(0, 150)}...`
+                              : item.originalPrompt || 'No content available'
+                            }
+                          </p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Badge variant={item.status === 'published' ? 'default' : 'secondary'}>
+                              {item.status}
+                            </Badge>
+                            <div className="flex items-center gap-1">
+                              {(item.platforms || []).map((platform) => (
+                                <div
+                                  key={platform}
+                                  className={`w-3 h-3 rounded-full ${getPlatformColor(platform)}`}
+                                  title={platform.charAt(0).toUpperCase() + platform.slice(1)}
+                                />
+                              ))}
+                            </div>
+                            <div className="flex items-center text-xs text-muted-foreground">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {formatDate(item.updatedAt)}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => copyToClipboard(item)}>
-                            <Copy className="w-4 h-4 mr-2" />
-                            Copy Content
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Content
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => updateContentStatus(
-                              item.id,
-                              item.status === 'draft' ? 'published' : 'draft'
-                            )}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => toggleExpanded(item.id)}
                           >
-                            <Share2 className="w-4 h-4 mr-2" />
-                            {item.status === 'draft' ? 'Publish' : 'Move to Draft'}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="text-destructive"
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="sm"
                             onClick={() => {
                               setItemToDelete(item.id);
                               setDeleteDialogOpen(true);
                             }}
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {Object.entries(item.generatedContent).map(([platform, data]) => (
-                        <div key={platform} className="p-3 bg-muted/30 rounded-lg">
-                          <div className="flex items-center justify-between mb-2">
-                            <Badge variant="outline" className="capitalize">
-                              {platform}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {data.characterCount} chars
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                            {data.content}
-                          </p>
-                          {data.hashtags.length > 0 && (
-                            <p className="text-xs text-primary">
-                              {data.hashtags.map(tag => `#${tag}`).join(' ')}
-                            </p>
-                          )}
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      </div>
+                    </CardHeader>
+                    {isExpanded && (
+                      <CardContent>
+                        <div className="space-y-3">
+                          {Object.entries(item.generatedContent).map(([platform, data]) => (
+                            <div key={platform} className="p-3 bg-muted/30 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <Badge variant="outline" className="capitalize">
+                                  {platform}
+                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">
+                                    {data.characterCount} chars
+                                  </span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => copyPlatformContent(platform, data.content, data.hashtags)}
+                                  >
+                                    <Copy className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handlePublishFromLibrary(platform, item.id)}
+                                    className="text-primary hover:text-primary/80"
+                                  >
+                                    <Send className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <p className="text-sm text-muted-foreground mb-2">
+                                {data.content}
+                              </p>
+                              {data.hashtags.length > 0 && (
+                                <p className="text-xs text-primary">
+                                  {data.hashtags.map(tag => `#${tag}`).join(' ')}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </div>
@@ -426,7 +561,7 @@ const ContentManager = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => itemToDelete && deleteContentItem(itemToDelete)}
+              onClick={() => itemToDelete && deleteContentItemHandler(itemToDelete)}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
@@ -434,6 +569,15 @@ const ContentManager = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Schedule Modal */}
+      <ScheduleModal
+        open={scheduleModalOpen}
+        onOpenChange={setScheduleModalOpen}
+        onSchedule={handleScheduleConfirm}
+        platform={selectedPlatformForSchedule}
+        content={selectedContentForSchedule}
+      />
     </div>
   );
 };

@@ -21,16 +21,33 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { HeroButton } from "@/components/ui/hero-button";
 import { Button } from "@/components/ui/button";
-import { Loading } from "@/components/ui/loading";
+import { Loading } from "@/components/ui/Loader";
 import Navigation from "@/components/layout/Navigation";
 import SettingsAlert from "@/components/ui/settings-alert";
-import { getStoredPlatforms, PlatformProfile } from "@/utils/storage";
+import {
+  getStoredPlatforms,
+  PlatformProfile,
+  saveContent,
+  getStoredContent,
+  saveCalendarEvent,
+  getCalendarEvents,
+  saveUserProfile,
+  getUserProfile,
+  saveNotificationSettings,
+  getNotificationSettings,
+  savePreferencesSettings,
+  getPreferencesSettings
+} from "@/utils/storage";
+import { getUserContent } from "@/app/actions/content";
+import { getUserCalendar } from "@/app/actions/calendar";
+import { getUserSettings } from "@/app/actions/settings";
+import { getUserPlatforms } from "@/app/actions/platforms";
 
 interface ContentItem {
   id: string;
   title: string;
-  content: string;
-  platforms: string[];
+  originalPrompt: string;
+  selectedPlatforms: string[];
   generatedContent: {
     [platform: string]: {
       content: string;
@@ -53,24 +70,142 @@ const Dashboard = () => {
   const [platforms, setPlatforms] = useState<PlatformProfile[]>([]);
 
   useEffect(() => {
-    loadContent();
-    loadPlatforms();
-  }, []);
+    const loadDashboardData = async () => {
+      if (session?.user?.email) {
+        await Promise.all([
+          loadContent(session.user.email),
+          loadCalendarData(session.user.email),
+          loadUserSettings(session.user.email),
+          loadPlatforms(session.user.email)
+        ]);
+      } else {
+        // Fallback for non-authenticated users
+        loadContent();
+        loadCalendarData();
+        loadUserSettings();
+        loadPlatforms();
+      }
+    };
 
-  const loadPlatforms = () => {
-    setPlatforms(getStoredPlatforms());
+    loadDashboardData();
+  }, [session]);
+
+  const loadPlatforms = async (email?: string) => {
+    try {
+      // Try to fetch from server first if email is provided
+      if (email) {
+        const serverPlatforms = await getUserPlatforms(email);
+        if (serverPlatforms && Array.isArray(serverPlatforms)) {
+          // Save to localStorage with the key 'platforms'
+          localStorage.setItem('platforms', JSON.stringify(serverPlatforms));
+          setPlatforms(serverPlatforms as unknown as PlatformProfile[]);
+          return;
+        }
+      }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem('platforms');
+      if (stored) {
+        const parsedPlatforms = JSON.parse(stored);
+        setPlatforms(Array.isArray(parsedPlatforms) ? parsedPlatforms : []);
+      } else {
+        setPlatforms([]);
+      }
+    } catch (error) {
+      console.error('Error loading platforms:', error);
+      // Fallback to localStorage on error
+      const stored = localStorage.getItem('platforms');
+      if (stored) {
+        try {
+          const parsedPlatforms = JSON.parse(stored);
+          setPlatforms(Array.isArray(parsedPlatforms) ? parsedPlatforms : []);
+        } catch (localError) {
+          console.error('Error loading local platforms:', localError);
+          setPlatforms([]);
+        }
+      } else {
+        setPlatforms([]);
+      }
+    }
   };
 
-  const loadContent = () => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
+  const loadContent = async (email?: string) => {
+    try {
+      // Try to fetch from server first if email is provided
+      if (email) {
+        const serverContent = await getUserContent(email);
+        if (serverContent && Array.isArray(serverContent)) {
+          // Save to localStorage using the same key as other pages
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(serverContent));
+          setContentItems(serverContent as unknown as ContentItem[]);
+          return;
+        }
+      }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
         const parsedContent = JSON.parse(stored);
-        setContentItems(parsedContent);
-      } catch (error) {
-        console.error('Error loading content:', error);
+        setContentItems(Array.isArray(parsedContent) ? parsedContent : []);
+      } else {
         setContentItems([]);
       }
+    } catch (error) {
+      console.error('Error loading content:', error);
+      // Fallback to localStorage on error
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          const parsedContent = JSON.parse(stored);
+          setContentItems(Array.isArray(parsedContent) ? parsedContent : []);
+        } catch (localError) {
+          console.error('Error loading local content:', localError);
+          setContentItems([]);
+        }
+      } else {
+        setContentItems([]);
+      }
+    }
+  };
+
+  const loadCalendarData = async (email?: string) => {
+    try {
+      // Try to fetch from server first if email is provided
+      if (email) {
+        const serverCalendar = await getUserCalendar(email);
+        if (serverCalendar && Array.isArray(serverCalendar)) {
+          // Save to localStorage using the unified calendar-events key
+          localStorage.setItem('calendar-events', JSON.stringify(serverCalendar));
+          return;
+        }
+      }
+
+      // Fallback to localStorage (already loaded by getCalendarEvents)
+    } catch (error) {
+      console.error('Error loading calendar data:', error);
+    }
+  };
+
+  const loadUserSettings = async (email?: string) => {
+    try {
+      // Try to fetch from server first if email is provided
+      if (email) {
+        const serverSettings = await getUserSettings(email);
+        if (serverSettings) {
+          // Save to localStorage using the same keys as settings page
+          saveUserProfile(serverSettings.profile);
+          saveNotificationSettings(serverSettings.notifications);
+          savePreferencesSettings({
+            ...serverSettings.preferences,
+            theme: serverSettings.preferences.theme as 'light' | 'dark' | 'system'
+          });
+          return;
+        }
+      }
+
+      // Fallback to localStorage (already loaded by individual functions)
+    } catch (error) {
+      console.error('Error loading user settings:', error);
     }
   };
 
@@ -110,8 +245,8 @@ const Dashboard = () => {
     .slice(0, 6)
     .map(item => ({
       id: item.id,
-      title: item.title || 'Untitled',
-      platforms: item.platforms || [],
+      title: (item.originalPrompt).slice(0, 75).concat("...") || 'Untitled',
+      platforms: item.selectedPlatforms || [],
       created: formatRelativeTime(item.updatedAt),
       status: item.status
     }));
@@ -299,7 +434,7 @@ const Dashboard = () => {
                                   <Icon key={platform} className="w-3 h-3" />
                                 );
                               })}
-                              <span>{(content.platforms || []).length} platforms</span>
+                              <span className="pl-2">{(content.platforms || []).length} platforms</span>
                             </div>
                           </div>
                         </div>
@@ -330,9 +465,9 @@ const Dashboard = () => {
                           <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${platform.connected ? 'bg-success/10' : 'bg-muted'
                             }`}>
                             <Icon className={`w-4 h-4 ${platform.color === 'instagram' ? 'text-instagram' :
-                                platform.color === 'twitter' ? 'text-twitter' :
-                                  platform.color === 'linkedin' ? 'text-linkedin' :
-                                    platform.color === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
+                              platform.color === 'twitter' ? 'text-twitter' :
+                                platform.color === 'linkedin' ? 'text-linkedin' :
+                                  platform.color === 'facebook' ? 'text-facebook' : 'text-muted-foreground'
                               }`} />
                           </div>
                           <div>
@@ -405,7 +540,7 @@ const Dashboard = () => {
                 <h3 className="font-semibold text-lg mb-2">Pro Tip</h3>
                 <p className="text-white/90 mb-4">
                   Connect to Supabase to unlock AI'powered content generation, user's authentication,
-                  and data persistence for the full SocialFlow experience.
+                  and data persistence for the full Sync experience.
                 </p>
                 <Button variant="secondary" size="sm">
                   Learn More
